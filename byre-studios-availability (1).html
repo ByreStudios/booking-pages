@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Byre Studios — Availability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a1a1a;
+    --fog:#8a8a8a;
+    --line:#e7e7e7;
+    --line-soft:#f0f0f0;
+  }
+
+  *{box-sizing:border-box;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important;}
+  }
+
+  html, body{
+    height:100%;
+    margin:0;
+  }
+  body{
+    background:#ffffff;
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    font-weight:400;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.4;
+  }
+
+  .wrap{
+    max-width:420px;
+    margin:0 auto;
+    padding:12px 16px 16px;
+  }
+
+  h2{
+    font-weight:500;
+    font-size:1.1rem;
+    margin:0 0 3px;
+  }
+  .sub{
+    font-size:0.8rem;
+    color:var(--fog);
+    margin:0 0 10px;
+  }
+
+  /* ---------- Calendar ---------- */
+  .cal-nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:6px;
+  }
+  .cal-nav .cal-month{
+    font-weight:500;
+    font-size:0.92rem;
+  }
+  .cal-nav button{
+    background:none;
+    border:1px solid var(--line);
+    border-radius:2px;
+    width:26px;
+    height:26px;
+    font-size:0.92rem;
+    color:var(--ink);
+    cursor:pointer;
+    transition:border-color 0.15s;
+  }
+  .cal-nav button:hover{border-color:var(--ink);}
+
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:3px;
+  }
+  .cal-weekday{
+    text-align:center;
+    font-size:0.68rem;
+    color:var(--fog);
+    padding-bottom:3px;
+    letter-spacing:0.02em;
+  }
+  .cal-day{
+    position:relative;
+    height:27px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:0.78rem;
+    border:1px solid var(--line);
+    border-radius:2px;
+    background:#fff;
+    cursor:pointer;
+    transition:background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .cal-day.is-empty{
+    border:none;
+    cursor:default;
+    pointer-events:none;
+  }
+  .cal-day.is-past{
+    color:#d4d4d4;
+    background:#fbfbfb;
+    cursor:default;
+    pointer-events:none;
+  }
+  .cal-day.is-booked{
+    color:#c4c4c4;
+    background:var(--line-soft);
+    text-decoration:line-through;
+    cursor:not-allowed;
+  }
+  .cal-day.is-available:hover{
+    border-color:var(--ink);
+  }
+  .cal-day.is-selected{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:#fff;
+  }
+  .cal-day.is-today:not(.is-selected)::after{
+    content:"";
+    position:absolute;
+    bottom:5px;
+    width:4px; height:4px;
+    border-radius:50%;
+    background:var(--ink);
+  }
+  .cal-day.is-partial:not(.is-selected)::before{
+    content:"";
+    position:absolute;
+    bottom:4px;
+    width:12px; height:2px;
+    background:var(--fog);
+  }
+  .cal-day.is-shake{
+    animation:shake 0.32s;
+  }
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-3px);}
+    75%{transform:translateX(3px);}
+  }
+
+  .cal-legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-top:8px;
+    font-size:0.7rem;
+    color:var(--fog);
+  }
+  .cal-legend span{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .cal-legend .swatch{
+    width:10px; height:10px;
+    border-radius:2px;
+    border:1px solid var(--line);
+    display:inline-block;
+  }
+  .cal-legend .swatch.booked{background:var(--line-soft); border-color:var(--line);}
+  .cal-legend .swatch.selected{background:var(--ink); border-color:var(--ink);}
+
+  .cal-message{
+    margin-top:0;
+    font-size:0.8rem;
+    padding:0 12px;
+    border-radius:2px;
+    background:#fafafa;
+    border:1px solid var(--line);
+    color:var(--ink);
+    opacity:0;
+    max-height:0;
+    overflow:hidden;
+    transition:opacity 0.2s, max-height 0.2s, margin-top 0.2s, padding 0.2s;
+  }
+  .cal-message.is-visible{
+    opacity:1;
+    max-height:50px;
+    padding:8px 12px;
+    margin-top:10px;
+  }
+
+  /* ---------- Day detail (hour-by-hour) ---------- */
+  .day-detail{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px solid var(--line);
+    display:none;
+  }
+  .day-detail.is-visible{display:block;}
+  .day-detail-title{
+    font-weight:500;
+    font-size:0.85rem;
+    margin:0 0 6px;
+  }
+
+  .quick-select{
+    display:flex;
+    gap:5px;
+    flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .quick-btn{
+    font-family:'Inter', sans-serif;
+    font-size:0.72rem;
+    padding:5px 8px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:#fff;
+    color:var(--ink);
+    cursor:pointer;
+    transition:border-color 0.15s;
+  }
+  .quick-btn:hover{border-color:var(--ink);}
+
+  .hour-grid{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:5px;
+  }
+  .hour-slot{
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:5px 4px;
+    text-align:center;
+    font-size:0.74rem;
+    cursor:pointer;
+    background:#fff;
+    transition:background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .hour-slot.is-booked{
+    color:#c4c4c4;
+    background:var(--line-soft);
+    text-decoration:line-through;
+    cursor:not-allowed;
+  }
+  .hour-slot.is-selected{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:#fff;
+  }
+  .hour-slot:not(.is-booked):hover{border-color:var(--ink);}
+  .hour-slot.is-shake{animation:shake 0.32s;}
+
+  .hour-summary{
+    margin-top:6px;
+    font-size:0.78rem;
+    color:var(--fog);
+  }
+  .clear-hours{
+    display:inline-block;
+    margin-top:5px;
+    background:none;
+    border:none;
+    padding:0;
+    font-size:0.74rem;
+    color:var(--fog);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .clear-hours:hover{color:var(--ink);}
+
+  @media (max-width:380px){
+    .hour-grid{grid-template-columns:repeat(2, 1fr);}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="cal-nav">
+    <button type="button" id="calPrev" aria-label="Previous month">‹</button>
+    <span class="cal-month" id="calMonthLabel"></span>
+    <button type="button" id="calNext" aria-label="Next month">›</button>
+  </div>
+
+  <div class="cal-grid" id="calWeekdays"></div>
+  <div class="cal-grid" id="calGrid" style="margin-top:4px;"></div>
+
+  <div class="cal-legend">
+    <span><span class="swatch"></span>Available</span>
+    <span><span class="swatch booked"></span>Booked</span>
+    <span><span class="swatch selected"></span>Selected</span>
+  </div>
+
+  <div class="cal-message" id="calMessage"></div>
+
+  <div class="day-detail" id="dayDetail">
+    <p class="day-detail-title" id="dayDetailTitle"></p>
+
+    <div class="quick-select">
+      <button type="button" class="quick-btn" data-quick="morning">Morning (9–13)</button>
+      <button type="button" class="quick-btn" data-quick="afternoon">Afternoon (13–17)</button>
+      <button type="button" class="quick-btn" data-quick="full">Full day (9–17)</button>
+    </div>
+
+    <div class="hour-grid" id="hourGrid"></div>
+
+    <p class="hour-summary" id="hourSummary">Click a slot above, or use a quick-select option.</p>
+    <button type="button" class="clear-hours" id="clearHours">Clear selection</button>
+  </div>
+
+</div>
+
+<script>
+  // ==========================================================
+  // AVAILABILITY DATA
+  // ==========================================================
+  // HOW TO UPDATE: add or remove dates below in 'YYYY-MM-DD' format
+  // whenever a booking comes in or a slot frees up. That's it —
+  // no other part of the file needs to change.
+  const UNAVAILABLE_DATES = [
+    // '2026-07-18',
+    // '2026-07-19',
+    // '2026-07-25',
+  ];
+
+  // Studio operating hours for the day view. 9 to 17 gives 8 hourly
+  // start-times, matching the 8-hour "full day" rate.
+  const OPEN_HOUR = 9;
+  const CLOSE_HOUR = 17;
+
+  // HOW TO UPDATE: to block off specific hours on a specific date
+  // (rather than the whole day), add an entry below using the date
+  // as the key and a list of the booked start-hours as the value.
+  // Hours run 9 to 16 (each one is a 1-hour slot, e.g. 9 = 9:00–10:00).
+  // A date doesn't need an entry here unless part of it is booked.
+  const BOOKED_HOURS = {
+    // '2026-07-21': [9, 10, 14],
+    // '2026-07-23': [9, 10, 11, 12, 13, 14, 15, 16],
+  };
+
+  // ==========================================================
+  // CALENDAR
+  // ==========================================================
+  const calMonthLabel = document.getElementById('calMonthLabel');
+  const calWeekdaysEl = document.getElementById('calWeekdays');
+  const calGridEl = document.getElementById('calGrid');
+  const calMessageEl = document.getElementById('calMessage');
+  const calPrevBtn = document.getElementById('calPrev');
+  const calNextBtn = document.getElementById('calNext');
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  let viewYear = today.getFullYear();
+  let viewMonth = today.getMonth(); // 0-indexed
+  let selectedDateStr = null;
+
+  const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  function pad(n){ return n < 10 ? '0' + n : '' + n; }
+
+  function toDateStr(y, m, d){
+    return `${y}-${pad(m + 1)}-${pad(d)}`;
+  }
+
+  function isUnavailable(dateStr){
+    return UNAVAILABLE_DATES.includes(dateStr);
+  }
+
+  function getBookedHours(dateStr){
+    return BOOKED_HOURS[dateStr] || [];
+  }
+
+  function isPartiallyBooked(dateStr){
+    const booked = getBookedHours(dateStr);
+    return booked.length > 0 && !isUnavailable(dateStr);
+  }
+
+  function showCalMessage(text){
+    calMessageEl.textContent = text;
+    calMessageEl.classList.add('is-visible');
+    clearTimeout(showCalMessage._t);
+    showCalMessage._t = setTimeout(() => {
+      calMessageEl.classList.remove('is-visible');
+    }, 4000);
+  }
+
+  function renderWeekdays(){
+    calWeekdaysEl.innerHTML = WEEKDAYS.map(d => `<div class="cal-weekday">${d}</div>`).join('');
+  }
+
+  function renderCalendar(){
+    calMonthLabel.textContent = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
+
+    const firstOfMonth = new Date(viewYear, viewMonth, 1);
+    const startOffset = (firstOfMonth.getDay() + 6) % 7;
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+    let cells = '';
+
+    for(let i = 0; i < startOffset; i++){
+      cells += `<div class="cal-day is-empty"></div>`;
+    }
+
+    for(let d = 1; d <= daysInMonth; d++){
+      const dateStr = toDateStr(viewYear, viewMonth, d);
+      const cellDate = new Date(viewYear, viewMonth, d);
+      cellDate.setHours(0,0,0,0);
+
+      let classes = 'cal-day';
+      if(cellDate < today){
+        classes += ' is-past';
+      } else if(isUnavailable(dateStr)){
+        classes += ' is-booked';
+      } else {
+        classes += ' is-available';
+        if(isPartiallyBooked(dateStr)){
+          classes += ' is-partial';
+        }
+      }
+      if(dateStr === toDateStr(today.getFullYear(), today.getMonth(), today.getDate())){
+        classes += ' is-today';
+      }
+      if(dateStr === selectedDateStr){
+        classes += ' is-selected';
+      }
+
+      cells += `<div class="${classes}" data-date="${dateStr}">${d}</div>`;
+    }
+
+    calGridEl.innerHTML = cells;
+
+    calGridEl.querySelectorAll('.cal-day.is-available, .cal-day.is-booked').forEach(cell => {
+      cell.addEventListener('click', onDayClick);
+    });
+  }
+
+  function onDayClick(e){
+    const cell = e.currentTarget;
+    const dateStr = cell.dataset.date;
+
+    if(cell.classList.contains('is-booked')){
+      cell.classList.remove('is-shake');
+      void cell.offsetWidth;
+      cell.classList.add('is-shake');
+      showCalMessage("That date's already booked — pick another day, or get in touch to check availability.");
+      hideDayDetail();
+      return;
+    }
+
+    selectedDateStr = dateStr;
+    renderCalendar();
+    openDayDetail(dateStr);
+  }
+
+  calPrevBtn.addEventListener('click', () => {
+    viewMonth--;
+    if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+    renderCalendar();
+  });
+  calNextBtn.addEventListener('click', () => {
+    viewMonth++;
+    if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+    renderCalendar();
+  });
+
+  // ==========================================================
+  // HOUR-BY-HOUR DAY DETAIL
+  // ==========================================================
+  const dayDetailEl = document.getElementById('dayDetail');
+  const dayDetailTitle = document.getElementById('dayDetailTitle');
+  const hourGridEl = document.getElementById('hourGrid');
+  const hourSummaryEl = document.getElementById('hourSummary');
+  const clearHoursBtn = document.getElementById('clearHours');
+
+  let selectedHours = new Set();
+  let hourDetailDateStr = null;
+
+  function formatHour(h){
+    return `${h}:00`;
+  }
+
+  function openDayDetail(dateStr){
+    hourDetailDateStr = dateStr;
+    selectedHours = new Set();
+
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    dayDetailTitle.textContent = `${DAY_NAMES[dateObj.getDay()]} ${d} ${MONTH_NAMES[m - 1]}`;
+
+    dayDetailEl.classList.add('is-visible');
+    renderHourGrid();
+    updateHourSummary();
+    dayDetailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function hideDayDetail(){
+    dayDetailEl.classList.remove('is-visible');
+    hourDetailDateStr = null;
+    selectedHours = new Set();
+  }
+
+  function renderHourGrid(){
+    if(!hourDetailDateStr) return;
+    const booked = getBookedHours(hourDetailDateStr);
+
+    let cells = '';
+    for(let h = OPEN_HOUR; h < CLOSE_HOUR; h++){
+      const isBooked = booked.includes(h);
+      const isSelected = selectedHours.has(h);
+      let classes = 'hour-slot';
+      if(isBooked) classes += ' is-booked';
+      if(isSelected) classes += ' is-selected';
+      cells += `<div class="${classes}" data-hour="${h}">${formatHour(h)}–${formatHour(h + 1)}</div>`;
+    }
+    hourGridEl.innerHTML = cells;
+
+    hourGridEl.querySelectorAll('.hour-slot').forEach(cell => {
+      cell.addEventListener('click', onHourClick);
+    });
+  }
+
+  function onHourClick(e){
+    const cell = e.currentTarget;
+    const hour = parseInt(cell.dataset.hour, 10);
+
+    if(cell.classList.contains('is-booked')){
+      cell.classList.remove('is-shake');
+      void cell.offsetWidth;
+      cell.classList.add('is-shake');
+      showCalMessage("That hour's already booked — pick another slot.");
+      return;
+    }
+
+    if(selectedHours.has(hour)){
+      selectedHours.delete(hour);
+    } else {
+      selectedHours.add(hour);
+    }
+    renderHourGrid();
+    updateHourSummary();
+  }
+
+  // Groups selected hours into contiguous ranges, e.g. [9,10,11,14] -> "9:00–12:00, 14:00–15:00"
+  function summariseSelectedHours(){
+    if(selectedHours.size === 0) return null;
+    const sorted = Array.from(selectedHours).sort((a, b) => a - b);
+    const ranges = [];
+    let start = sorted[0];
+    let prev = sorted[0];
+
+    for(let i = 1; i <= sorted.length; i++){
+      const current = sorted[i];
+      if(current !== prev + 1){
+        ranges.push([start, prev]);
+        start = current;
+      }
+      prev = current;
+    }
+
+    const rangeText = ranges.map(([s, e]) => `${formatHour(s)}–${formatHour(e + 1)}`).join(', ');
+    return { rangeText, hourCount: sorted.length };
+  }
+
+  function updateHourSummary(){
+    const summary = summariseSelectedHours();
+
+    if(!summary){
+      hourSummaryEl.textContent = 'Click a slot above, or use a quick-select option.';
+      return;
+    }
+
+    hourSummaryEl.textContent = `Selected: ${summary.rangeText} (${summary.hourCount} hour${summary.hourCount !== 1 ? 's' : ''})`;
+  }
+
+  function selectHourRange(startHour, endHourExclusive){
+    selectedHours = new Set();
+    for(let h = startHour; h < endHourExclusive; h++){
+      if(!getBookedHours(hourDetailDateStr).includes(h)){
+        selectedHours.add(h);
+      }
+    }
+    renderHourGrid();
+    updateHourSummary();
+  }
+
+  document.querySelectorAll('.quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const quick = btn.dataset.quick;
+      if(quick === 'morning') selectHourRange(OPEN_HOUR, OPEN_HOUR + 4);
+      if(quick === 'afternoon') selectHourRange(OPEN_HOUR + 4, CLOSE_HOUR);
+      if(quick === 'full') selectHourRange(OPEN_HOUR, CLOSE_HOUR);
+    });
+  });
+
+  clearHoursBtn.addEventListener('click', () => {
+    selectedHours = new Set();
+    renderHourGrid();
+    updateHourSummary();
+  });
+
+  renderWeekdays();
+  renderCalendar();
+</script>
+
+</body>
+</html>
