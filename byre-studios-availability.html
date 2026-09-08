@@ -13,6 +13,8 @@
     --fog:#8a8a8a;
     --line:#e7e7e7;
     --line-soft:#f0f0f0;
+    --studio-color:#5f9295;
+    --darkroom-color:#d53123;
   }
 
   *{box-sizing:border-box;}
@@ -98,7 +100,8 @@
     border-radius:2px;
     background:#fff;
     cursor:pointer;
-    transition:background 0.12s, border-color 0.12s, color 0.12s;
+    overflow:hidden;
+    transition:border-color 0.12s, color 0.12s;
   }
   .cal-day.is-empty{
     border:none;
@@ -111,10 +114,8 @@
     cursor:default;
     pointer-events:none;
   }
-  .cal-day.is-booked{
-    color:#c4c4c4;
-    background:var(--line-soft);
-    text-decoration:line-through;
+  .cal-day.is-fully-booked{
+    color:#8a8a8a;
     cursor:not-allowed;
   }
   .cal-day.is-available:hover{
@@ -125,20 +126,17 @@
     border-color:var(--ink);
     color:#fff;
   }
+  .cal-day.is-selected .cal-day-half{
+    display:none;
+  }
   .cal-day.is-today:not(.is-selected)::after{
     content:"";
     position:absolute;
-    bottom:5px;
+    bottom:3px;
     width:4px; height:4px;
     border-radius:50%;
     background:var(--ink);
-  }
-  .cal-day.is-partial:not(.is-selected)::before{
-    content:"";
-    position:absolute;
-    bottom:4px;
-    width:12px; height:2px;
-    background:var(--fog);
+    z-index:2;
   }
   .cal-day.is-shake{
     animation:shake 0.32s;
@@ -147,6 +145,22 @@
     0%,100%{transform:translateX(0);}
     25%{transform:translateX(-3px);}
     75%{transform:translateX(3px);}
+  }
+
+  /* Half-day booking overlays — sit behind the day number, colour-coded
+     by which space (Studio/Darkroom) is booked in that half of the day. */
+  .cal-day-half{
+    position:absolute;
+    top:0;
+    bottom:0;
+    width:50%;
+    z-index:0;
+  }
+  .cal-day-half.half-am{left:0;}
+  .cal-day-half.half-pm{right:0;}
+  .cal-day-num{
+    position:relative;
+    z-index:1;
   }
 
   .cal-legend{
@@ -168,8 +182,13 @@
     border:1px solid var(--line);
     display:inline-block;
   }
-  .cal-legend .swatch.booked{background:var(--line-soft); border-color:var(--line);}
   .cal-legend .swatch.selected{background:var(--ink); border-color:var(--ink);}
+  .cal-legend .swatch.studio{background:rgba(95,146,149,0.55); border-color:rgba(95,146,149,0.55);}
+  .cal-legend .swatch.darkroom{background:rgba(213,49,35,0.55); border-color:rgba(213,49,35,0.55);}
+  .cal-legend .swatch.both{
+    background:linear-gradient(135deg, rgba(95,146,149,0.55) 50%, rgba(213,49,35,0.55) 50%);
+    border-color:var(--line);
+  }
 
   .cal-message{
     margin-top:0;
@@ -291,7 +310,9 @@
 
   <div class="cal-legend">
     <span><span class="swatch"></span>Available</span>
-    <span><span class="swatch booked"></span>Booked</span>
+    <span><span class="swatch studio"></span>Studio booked</span>
+    <span><span class="swatch darkroom"></span>Darkroom booked</span>
+    <span><span class="swatch both"></span>Both booked</span>
     <span><span class="swatch selected"></span>Selected</span>
   </div>
 
@@ -318,31 +339,41 @@
   // ==========================================================
   // AVAILABILITY DATA
   // ==========================================================
-  // HOW TO UPDATE: add or remove dates below in 'YYYY-MM-DD' format
-  // whenever a booking comes in or a slot frees up. That's it —
-  // no other part of the file needs to change.
-  const UNAVAILABLE_DATES = [
-  '2026-07-24',
-  '2026-07-25',
-  '2026-07-26',
-  '2026-07-27',
-  '2026-07-28',
-  ];
+  // HOW TO UPDATE: Studio and Darkroom are tracked separately,
+  // since they're two independent bookable spaces and can be
+  // booked at the same time by different clients.
+  //
+  // For each, add an entry below using the date ('YYYY-MM-DD')
+  // as the key and a list of the booked start-hours as the value.
+  // Hours run 9 to 16 (each is a 1-hour slot, e.g. 9 = 9:00–10:00).
+  // Morning = 9,10,11,12 — Afternoon = 13,14,15,16 — Full day = all 8.
+  //
+  // Examples:
+  //   Darkroom booked in the morning only:
+  //     '2026-07-24': [9, 10, 11, 12],
+  //   Darkroom booked all day:
+  //     '2026-07-25': [9, 10, 11, 12, 13, 14, 15, 16],
+  //   Studio booked morning + Darkroom booked afternoon on the same
+  //   date: add [9,10,11,12] under STUDIO_BOOKED_HOURS for that date,
+  //   and [13,14,15,16] under DARKROOM_BOOKED_HOURS for the same date.
+  //
+  // A date doesn't need an entry unless some part of it is booked.
+  const STUDIO_BOOKED_HOURS = {
+    // '2026-07-21': [9, 10, 11, 12],
+  };
+
+  const DARKROOM_BOOKED_HOURS = {
+    // '2026-07-24': [9, 10, 11, 12],
+    // '2026-07-25': [9, 10, 11, 12, 13, 14, 15, 16],
+  };
 
   // Studio operating hours for the day view. 9 to 17 gives 8 hourly
   // start-times, matching the 8-hour "full day" rate.
   const OPEN_HOUR = 9;
   const CLOSE_HOUR = 17;
-
-  // HOW TO UPDATE: to block off specific hours on a specific date
-  // (rather than the whole day), add an entry below using the date
-  // as the key and a list of the booked start-hours as the value.
-  // Hours run 9 to 16 (each one is a 1-hour slot, e.g. 9 = 9:00–10:00).
-  // A date doesn't need an entry here unless part of it is booked.
-  const BOOKED_HOURS = {
-    // '2026-07-21': [9, 10, 14],
-    // '2026-07-23': [9, 10, 11, 12, 13, 14, 15, 16],
-  };
+  const MORNING_HOURS = [9, 10, 11, 12];
+  const AFTERNOON_HOURS = [13, 14, 15, 16];
+  const ALL_HOURS = [...MORNING_HOURS, ...AFTERNOON_HOURS];
 
   // ==========================================================
   // CALENDAR
@@ -370,17 +401,42 @@
     return `${y}-${pad(m + 1)}-${pad(d)}`;
   }
 
-  function isUnavailable(dateStr){
-    return UNAVAILABLE_DATES.includes(dateStr);
+  function getStudioHours(dateStr){
+    return STUDIO_BOOKED_HOURS[dateStr] || [];
   }
 
-  function getBookedHours(dateStr){
-    return BOOKED_HOURS[dateStr] || [];
+  function getDarkroomHours(dateStr){
+    return DARKROOM_BOOKED_HOURS[dateStr] || [];
   }
 
-  function isPartiallyBooked(dateStr){
-    const booked = getBookedHours(dateStr);
-    return booked.length > 0 && !isUnavailable(dateStr);
+  // Is a given space booked for ANY hour within a half (morning/afternoon)?
+  function hasAny(hoursArr, halfHours){
+    return halfHours.some(h => hoursArr.includes(h));
+  }
+
+  // Works out what colour(s), if any, a half of a day cell should show.
+  function getHalfState(dateStr, halfHours){
+    const studioBooked = hasAny(getStudioHours(dateStr), halfHours);
+    const darkroomBooked = hasAny(getDarkroomHours(dateStr), halfHours);
+    if(studioBooked && darkroomBooked) return 'both';
+    if(studioBooked) return 'studio';
+    if(darkroomBooked) return 'darkroom';
+    return 'none';
+  }
+
+  function halfBackground(state){
+    if(state === 'studio') return 'rgba(95,146,149,0.55)';
+    if(state === 'darkroom') return 'rgba(213,49,35,0.55)';
+    if(state === 'both') return 'linear-gradient(135deg, rgba(95,146,149,0.55) 50%, rgba(213,49,35,0.55) 50%)';
+    return 'transparent';
+  }
+
+  // A date is "fully booked" (greyed out, not clickable) only when both
+  // Studio and Darkroom are booked for every hour of the day.
+  function isFullyBooked(dateStr){
+    const studio = getStudioHours(dateStr);
+    const darkroom = getDarkroomHours(dateStr);
+    return ALL_HOURS.every(h => studio.includes(h)) && ALL_HOURS.every(h => darkroom.includes(h));
   }
 
   function showCalMessage(text){
@@ -415,16 +471,21 @@
       cellDate.setHours(0,0,0,0);
 
       let classes = 'cal-day';
+      let halvesHtml = '';
+
       if(cellDate < today){
         classes += ' is-past';
-      } else if(isUnavailable(dateStr)){
-        classes += ' is-booked';
       } else {
-        classes += ' is-available';
-        if(isPartiallyBooked(dateStr)){
-          classes += ' is-partial';
-        }
+        const fullyBooked = isFullyBooked(dateStr);
+        classes += fullyBooked ? ' is-fully-booked' : ' is-available';
+
+        const amState = getHalfState(dateStr, MORNING_HOURS);
+        const pmState = getHalfState(dateStr, AFTERNOON_HOURS);
+        halvesHtml =
+          `<span class="cal-day-half half-am" style="background:${halfBackground(amState)};"></span>` +
+          `<span class="cal-day-half half-pm" style="background:${halfBackground(pmState)};"></span>`;
       }
+
       if(dateStr === toDateStr(today.getFullYear(), today.getMonth(), today.getDate())){
         classes += ' is-today';
       }
@@ -432,12 +493,12 @@
         classes += ' is-selected';
       }
 
-      cells += `<div class="${classes}" data-date="${dateStr}">${d}</div>`;
+      cells += `<div class="${classes}" data-date="${dateStr}">${halvesHtml}<span class="cal-day-num">${d}</span></div>`;
     }
 
     calGridEl.innerHTML = cells;
 
-    calGridEl.querySelectorAll('.cal-day.is-available, .cal-day.is-booked').forEach(cell => {
+    calGridEl.querySelectorAll('.cal-day.is-available, .cal-day.is-fully-booked').forEach(cell => {
       cell.addEventListener('click', onDayClick);
     });
   }
@@ -446,11 +507,11 @@
     const cell = e.currentTarget;
     const dateStr = cell.dataset.date;
 
-    if(cell.classList.contains('is-booked')){
+    if(cell.classList.contains('is-fully-booked')){
       cell.classList.remove('is-shake');
       void cell.offsetWidth;
       cell.classList.add('is-shake');
-      showCalMessage("That date's already booked — pick another day, or get in touch to check availability.");
+      showCalMessage("Both spaces are fully booked that day — pick another day, or get in touch to check availability.");
       hideDayDetail();
       return;
     }
@@ -474,6 +535,9 @@
   // ==========================================================
   // HOUR-BY-HOUR DAY DETAIL
   // ==========================================================
+  // An hour only shows as "booked" (unselectable) here if BOTH
+  // Studio and Darkroom are taken at that hour — if only one space
+  // is booked, the other is still available, so the slot stays open.
   const dayDetailEl = document.getElementById('dayDetail');
   const dayDetailTitle = document.getElementById('dayDetailTitle');
   const hourGridEl = document.getElementById('hourGrid');
@@ -485,6 +549,10 @@
 
   function formatHour(h){
     return `${h}:00`;
+  }
+
+  function isHourFullyBooked(dateStr, hour){
+    return getStudioHours(dateStr).includes(hour) && getDarkroomHours(dateStr).includes(hour);
   }
 
   function openDayDetail(dateStr){
@@ -509,11 +577,10 @@
 
   function renderHourGrid(){
     if(!hourDetailDateStr) return;
-    const booked = getBookedHours(hourDetailDateStr);
 
     let cells = '';
     for(let h = OPEN_HOUR; h < CLOSE_HOUR; h++){
-      const isBooked = booked.includes(h);
+      const isBooked = isHourFullyBooked(hourDetailDateStr, h);
       const isSelected = selectedHours.has(h);
       let classes = 'hour-slot';
       if(isBooked) classes += ' is-booked';
@@ -583,7 +650,7 @@
   function selectHourRange(startHour, endHourExclusive){
     selectedHours = new Set();
     for(let h = startHour; h < endHourExclusive; h++){
-      if(!getBookedHours(hourDetailDateStr).includes(h)){
+      if(!isHourFullyBooked(hourDetailDateStr, h)){
         selectedHours.add(h);
       }
     }
