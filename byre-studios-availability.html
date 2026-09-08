@@ -114,10 +114,6 @@
     cursor:default;
     pointer-events:none;
   }
-  .cal-day.is-fully-booked{
-    color:#8a8a8a;
-    cursor:not-allowed;
-  }
   .cal-day.is-available:hover{
     border-color:var(--ink);
   }
@@ -126,17 +122,12 @@
     border-color:var(--ink);
     color:#fff;
   }
-  .cal-day.is-selected .cal-day-half{
+  .cal-day.is-selected .cal-day-dots{
     display:none;
   }
-  .cal-day.is-today:not(.is-selected)::after{
-    content:"";
-    position:absolute;
-    bottom:3px;
-    width:4px; height:4px;
-    border-radius:50%;
-    background:var(--ink);
-    z-index:2;
+  .cal-day.is-today:not(.is-selected){
+    font-weight:600;
+    border-color:var(--ink);
   }
   .cal-day.is-shake{
     animation:shake 0.32s;
@@ -147,17 +138,25 @@
     75%{transform:translateX(3px);}
   }
 
-  /* Half-day booking overlays — sit behind the day number, colour-coded
-     by which space (Studio/Darkroom) is booked in that half of the day. */
-  .cal-day-half{
+  /* Small bottom dots — one per space that's booked at some point that
+     day. Dates stay fully clickable either way; the dots are just a
+     quick visual hint, with the real detail shown once you click in. */
+  .cal-day-dots{
     position:absolute;
-    top:0;
-    bottom:0;
-    width:50%;
-    z-index:0;
+    bottom:3px;
+    left:0;
+    right:0;
+    display:flex;
+    justify-content:center;
+    gap:3px;
   }
-  .cal-day-half.half-am{left:0;}
-  .cal-day-half.half-pm{right:0;}
+  .cal-day-dot{
+    width:4px;
+    height:4px;
+    border-radius:50%;
+  }
+  .cal-day-dot.studio{background:var(--studio-color);}
+  .cal-day-dot.darkroom{background:var(--darkroom-color);}
   .cal-day-num{
     position:relative;
     z-index:1;
@@ -165,30 +164,37 @@
 
   .cal-legend{
     display:flex;
-    flex-wrap:wrap;
-    gap:12px;
+    flex-wrap:nowrap;
+    align-items:center;
+    gap:7px;
     margin-top:8px;
-    font-size:0.7rem;
+    font-size:0.6rem;
     color:var(--fog);
+    overflow-x:auto;
+    white-space:nowrap;
   }
   .cal-legend span{
     display:inline-flex;
     align-items:center;
-    gap:6px;
+    gap:3px;
+    flex-shrink:0;
   }
   .cal-legend .swatch{
-    width:10px; height:10px;
+    width:8px; height:8px;
     border-radius:2px;
     border:1px solid var(--line);
     display:inline-block;
+    flex-shrink:0;
   }
   .cal-legend .swatch.selected{background:var(--ink); border-color:var(--ink);}
-  .cal-legend .swatch.studio{background:rgba(95,146,149,0.55); border-color:rgba(95,146,149,0.55);}
-  .cal-legend .swatch.darkroom{background:rgba(213,49,35,0.55); border-color:rgba(213,49,35,0.55);}
-  .cal-legend .swatch.both{
-    background:linear-gradient(135deg, rgba(95,146,149,0.55) 50%, rgba(213,49,35,0.55) 50%);
-    border-color:var(--line);
+  .cal-legend .dot{
+    width:6px; height:6px;
+    border-radius:50%;
+    display:inline-block;
+    flex-shrink:0;
   }
+  .cal-legend .dot.studio{background:var(--studio-color);}
+  .cal-legend .dot.darkroom{background:var(--darkroom-color);}
 
   .cal-message{
     margin-top:0;
@@ -264,6 +270,14 @@
     text-decoration:line-through;
     cursor:not-allowed;
   }
+  .hour-slot.is-tinted-studio{
+    background:rgba(95,146,149,0.16);
+    border-color:rgba(95,146,149,0.4);
+  }
+  .hour-slot.is-tinted-darkroom{
+    background:rgba(213,49,35,0.16);
+    border-color:rgba(213,49,35,0.4);
+  }
   .hour-slot.is-selected{
     background:var(--ink);
     border-color:var(--ink);
@@ -310,9 +324,8 @@
 
   <div class="cal-legend">
     <span><span class="swatch"></span>Available</span>
-    <span><span class="swatch studio"></span>Studio booked</span>
-    <span><span class="swatch darkroom"></span>Darkroom booked</span>
-    <span><span class="swatch both"></span>Both booked</span>
+    <span><span class="dot studio"></span>Studio partially booked</span>
+    <span><span class="dot darkroom"></span>Darkroom partially booked</span>
     <span><span class="swatch selected"></span>Selected</span>
   </div>
 
@@ -329,7 +342,7 @@
 
     <div class="hour-grid" id="hourGrid"></div>
 
-    <p class="hour-summary" id="hourSummary">Click a slot above, or use a quick-select option.</p>
+    <p class="hour-summary" id="hourSummary"></p>
     <button type="button" class="clear-hours" id="clearHours">Clear selection</button>
   </div>
 
@@ -373,7 +386,6 @@
   const CLOSE_HOUR = 17;
   const MORNING_HOURS = [9, 10, 11, 12];
   const AFTERNOON_HOURS = [13, 14, 15, 16];
-  const ALL_HOURS = [...MORNING_HOURS, ...AFTERNOON_HOURS];
 
   // ==========================================================
   // CALENDAR
@@ -409,34 +421,12 @@
     return DARKROOM_BOOKED_HOURS[dateStr] || [];
   }
 
-  // Is a given space booked for ANY hour within a half (morning/afternoon)?
-  function hasAny(hoursArr, halfHours){
-    return halfHours.some(h => hoursArr.includes(h));
+  // Is a given space booked for any hour at all that day?
+  function isStudioBookedThatDay(dateStr){
+    return getStudioHours(dateStr).length > 0;
   }
-
-  // Works out what colour(s), if any, a half of a day cell should show.
-  function getHalfState(dateStr, halfHours){
-    const studioBooked = hasAny(getStudioHours(dateStr), halfHours);
-    const darkroomBooked = hasAny(getDarkroomHours(dateStr), halfHours);
-    if(studioBooked && darkroomBooked) return 'both';
-    if(studioBooked) return 'studio';
-    if(darkroomBooked) return 'darkroom';
-    return 'none';
-  }
-
-  function halfBackground(state){
-    if(state === 'studio') return 'rgba(95,146,149,0.55)';
-    if(state === 'darkroom') return 'rgba(213,49,35,0.55)';
-    if(state === 'both') return 'linear-gradient(135deg, rgba(95,146,149,0.55) 50%, rgba(213,49,35,0.55) 50%)';
-    return 'transparent';
-  }
-
-  // A date is "fully booked" (greyed out, not clickable) only when both
-  // Studio and Darkroom are booked for every hour of the day.
-  function isFullyBooked(dateStr){
-    const studio = getStudioHours(dateStr);
-    const darkroom = getDarkroomHours(dateStr);
-    return ALL_HOURS.every(h => studio.includes(h)) && ALL_HOURS.every(h => darkroom.includes(h));
+  function isDarkroomBookedThatDay(dateStr){
+    return getDarkroomHours(dateStr).length > 0;
   }
 
   function showCalMessage(text){
@@ -471,19 +461,19 @@
       cellDate.setHours(0,0,0,0);
 
       let classes = 'cal-day';
-      let halvesHtml = '';
+      let dotsHtml = '';
 
       if(cellDate < today){
         classes += ' is-past';
       } else {
-        const fullyBooked = isFullyBooked(dateStr);
-        classes += fullyBooked ? ' is-fully-booked' : ' is-available';
+        classes += ' is-available';
 
-        const amState = getHalfState(dateStr, MORNING_HOURS);
-        const pmState = getHalfState(dateStr, AFTERNOON_HOURS);
-        halvesHtml =
-          `<span class="cal-day-half half-am" style="background:${halfBackground(amState)};"></span>` +
-          `<span class="cal-day-half half-pm" style="background:${halfBackground(pmState)};"></span>`;
+        const dots = [];
+        if(isStudioBookedThatDay(dateStr)) dots.push('<span class="cal-day-dot studio"></span>');
+        if(isDarkroomBookedThatDay(dateStr)) dots.push('<span class="cal-day-dot darkroom"></span>');
+        if(dots.length){
+          dotsHtml = `<span class="cal-day-dots">${dots.join('')}</span>`;
+        }
       }
 
       if(dateStr === toDateStr(today.getFullYear(), today.getMonth(), today.getDate())){
@@ -493,12 +483,12 @@
         classes += ' is-selected';
       }
 
-      cells += `<div class="${classes}" data-date="${dateStr}">${halvesHtml}<span class="cal-day-num">${d}</span></div>`;
+      cells += `<div class="${classes}" data-date="${dateStr}">${dotsHtml}<span class="cal-day-num">${d}</span></div>`;
     }
 
     calGridEl.innerHTML = cells;
 
-    calGridEl.querySelectorAll('.cal-day.is-available, .cal-day.is-fully-booked').forEach(cell => {
+    calGridEl.querySelectorAll('.cal-day.is-available').forEach(cell => {
       cell.addEventListener('click', onDayClick);
     });
   }
@@ -506,15 +496,6 @@
   function onDayClick(e){
     const cell = e.currentTarget;
     const dateStr = cell.dataset.date;
-
-    if(cell.classList.contains('is-fully-booked')){
-      cell.classList.remove('is-shake');
-      void cell.offsetWidth;
-      cell.classList.add('is-shake');
-      showCalMessage("Both spaces are fully booked that day — pick another day, or get in touch to check availability.");
-      hideDayDetail();
-      return;
-    }
 
     selectedDateStr = dateStr;
     renderCalendar();
@@ -535,9 +516,10 @@
   // ==========================================================
   // HOUR-BY-HOUR DAY DETAIL
   // ==========================================================
-  // An hour only shows as "booked" (unselectable) here if BOTH
-  // Studio and Darkroom are taken at that hour — if only one space
-  // is booked, the other is still available, so the slot stays open.
+  // An hour only shows as fully "booked" (unselectable) here if BOTH
+  // Studio and Darkroom are taken at that hour. If only one space is
+  // booked, the slot stays selectable but gets a light colour tint
+  // to flag that one space is already taken then.
   const dayDetailEl = document.getElementById('dayDetail');
   const dayDetailTitle = document.getElementById('dayDetailTitle');
   const hourGridEl = document.getElementById('hourGrid');
@@ -553,6 +535,27 @@
 
   function isHourFullyBooked(dateStr, hour){
     return getStudioHours(dateStr).includes(hour) && getDarkroomHours(dateStr).includes(hour);
+  }
+
+  // Groups a set of hours into contiguous ranges, e.g.
+  // [9,10,11,14] -> "9:00–12:00, 14:00–15:00"
+  function groupContiguousHours(hoursArray){
+    const sorted = Array.from(hoursArray).sort((a, b) => a - b);
+    const ranges = [];
+    let start = sorted[0];
+    let prev = sorted[0];
+
+    for(let i = 1; i <= sorted.length; i++){
+      const current = sorted[i];
+      if(current !== prev + 1){
+        ranges.push([start, prev]);
+        start = current;
+      }
+      prev = current;
+    }
+
+    const rangeText = ranges.map(([s, e]) => `${formatHour(s)}–${formatHour(e + 1)}`).join(', ');
+    return { rangeText, hourCount: sorted.length };
   }
 
   function openDayDetail(dateStr){
@@ -578,13 +581,25 @@
   function renderHourGrid(){
     if(!hourDetailDateStr) return;
 
+    const studioHours = getStudioHours(hourDetailDateStr);
+    const darkroomHours = getDarkroomHours(hourDetailDateStr);
+
     let cells = '';
     for(let h = OPEN_HOUR; h < CLOSE_HOUR; h++){
-      const isBooked = isHourFullyBooked(hourDetailDateStr, h);
+      const studioBooked = studioHours.includes(h);
+      const darkroomBooked = darkroomHours.includes(h);
       const isSelected = selectedHours.has(h);
+
       let classes = 'hour-slot';
-      if(isBooked) classes += ' is-booked';
+      if(studioBooked && darkroomBooked){
+        classes += ' is-booked';
+      } else if(studioBooked){
+        classes += ' is-tinted-studio';
+      } else if(darkroomBooked){
+        classes += ' is-tinted-darkroom';
+      }
       if(isSelected) classes += ' is-selected';
+
       cells += `<div class="${classes}" data-hour="${h}">${formatHour(h)}–${formatHour(h + 1)}</div>`;
     }
     hourGridEl.innerHTML = cells;
@@ -618,29 +633,14 @@
   // Groups selected hours into contiguous ranges, e.g. [9,10,11,14] -> "9:00–12:00, 14:00–15:00"
   function summariseSelectedHours(){
     if(selectedHours.size === 0) return null;
-    const sorted = Array.from(selectedHours).sort((a, b) => a - b);
-    const ranges = [];
-    let start = sorted[0];
-    let prev = sorted[0];
-
-    for(let i = 1; i <= sorted.length; i++){
-      const current = sorted[i];
-      if(current !== prev + 1){
-        ranges.push([start, prev]);
-        start = current;
-      }
-      prev = current;
-    }
-
-    const rangeText = ranges.map(([s, e]) => `${formatHour(s)}–${formatHour(e + 1)}`).join(', ');
-    return { rangeText, hourCount: sorted.length };
+    return groupContiguousHours(selectedHours);
   }
 
   function updateHourSummary(){
     const summary = summariseSelectedHours();
 
     if(!summary){
-      hourSummaryEl.textContent = 'Click a slot above, or use a quick-select option.';
+      hourSummaryEl.textContent = '';
       return;
     }
 
