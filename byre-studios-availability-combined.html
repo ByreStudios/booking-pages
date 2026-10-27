@@ -1,1266 +1,1051 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Byre Studios — Availability &amp; Booking</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --ink:#1a1a1a;
-    --fog:#8a8a8a;
-    --line:#e7e7e7;
-    --line-soft:#f0f0f0;
-    --studio-color:#5f9295;
-    --darkroom-color:#d53123;
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Byre Studios — Book a Session</title>
+    <style>
+        :root{
+            --ink:#1a1a1a;
+            --fog:#8a8a8a;
+            --line:#e2e8f0;
+            --line-soft:#f0f0f0;
+            --studio-color:#5f9295;
+            --darkroom-color:#d53123;
+        }
 
-  *{box-sizing:border-box;}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  @media (prefers-reduced-motion: reduce){
-    *{animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important;}
-  }
+        html, body { height: auto; }
 
-  html, body{
-    height:100%;
-    margin:0;
-  }
-  body{
-    background:#ffffff;
-    color:var(--ink);
-    font-family:'Inter', sans-serif;
-    font-weight:400;
-    -webkit-font-smoothing:antialiased;
-    line-height:1.4;
-  }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #ffffff;
+            color: var(--ink);
+            padding: 24px 16px;
+        }
 
-  .wrap{
-    max-width:420px;
-    margin:0 auto;
-    padding:12px 16px 16px;
-  }
+        /* Container: full width (with side padding) on mobile, capped at
+           roughly 60% of the available width on desktop — but never wider
+           than 680px, so it doesn't balloon on very large screens. */
+        .container {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 32px;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+        }
 
-  /* ---------- Responsive layout: stacked on mobile, side by side on desktop ---------- */
-  .layout{
-    display:flex;
-    flex-direction:column;
-    gap:0;
-  }
-  .col-calendar, .col-form{
-    width:100%;
-  }
+        @media (min-width: 860px) {
+            .container {
+                max-width: min(60vw, 680px);
+                padding: 40px;
+            }
+        }
 
-  @media (min-width:700px){
-    .wrap{max-width:860px;}
-    .layout{
-      flex-direction:row;
-      align-items:flex-start;
-      gap:32px;
-    }
-    .col-calendar, .col-form{
-      flex:1;
-      min-width:0;
-    }
-    .col-form{
-      padding-left:32px;
-      border-left:1px solid var(--line);
-    }
-    .section-divider{display:none;}
-  }
+        h1 { font-size: 26px; margin-bottom: 20px; color: var(--ink); }
 
-  h2{
-    font-weight:500;
-    font-size:1.1rem;
-    margin:0 0 3px;
-  }
-  .sub{
-    font-size:0.8rem;
-    color:var(--fog);
-    margin:0 0 10px;
-  }
+        .form-group { margin-bottom: 18px; position: relative; }
+        label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 7px; color: #2d3748; }
+        .required::after { content: " *"; color: #e53e3e; }
 
-  /* ---------- Calendar ---------- */
-  .cal-nav{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:6px;
-  }
-  .cal-nav .cal-month{
-    font-weight:500;
-    font-size:0.92rem;
-  }
-  .cal-nav button{
-    background:none;
-    border:1px solid var(--line);
-    border-radius:2px;
-    width:26px;
-    height:26px;
-    font-size:0.92rem;
-    color:var(--ink);
-    cursor:pointer;
-    transition:border-color 0.15s;
-  }
-  .cal-nav button:hover{border-color:var(--ink);}
+        input, select, textarea {
+            width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px;
+            font-size: 14px; font-family: inherit; transition: all 0.2s ease; background: #fff; color: var(--ink);
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(26,26,26,0.07); }
+        textarea { resize: vertical; min-height: 90px; }
 
-  .cal-grid{
-    display:grid;
-    grid-template-columns:repeat(7, 1fr);
-    gap:3px;
-  }
-  .cal-weekday{
-    text-align:center;
-    font-size:0.68rem;
-    color:var(--fog);
-    padding-bottom:3px;
-    letter-spacing:0.02em;
-  }
-  .cal-day{
-    position:relative;
-    height:27px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:0.78rem;
-    border:1px solid var(--line);
-    border-radius:2px;
-    background:#fff;
-    cursor:pointer;
-    overflow:hidden;
-    transition:border-color 0.12s, color 0.12s;
-  }
-  .cal-day.is-empty{
-    border:none;
-    cursor:default;
-    pointer-events:none;
-  }
-  .cal-day.is-past,
-  .cal-day.is-full{
-    color:#d4d4d4;
-    background:#fbfbfb;
-    cursor:default;
-    pointer-events:none;
-  }
-  .cal-day.is-available:hover{
-    border-color:var(--ink);
-  }
-  .cal-day.is-selected{
-    background:var(--ink);
-    border-color:var(--ink);
-    color:#fff;
-  }
-  .cal-day.is-selected .cal-day-dots{
-    display:none;
-  }
-  .cal-day.is-today:not(.is-selected){
-    font-weight:600;
-    border-color:var(--ink);
-  }
-  .cal-day.is-shake{
-    animation:shake 0.32s;
-  }
-  @keyframes shake{
-    0%,100%{transform:translateX(0);}
-    25%{transform:translateX(-3px);}
-    75%{transform:translateX(3px);}
-  }
+        input[readonly] { cursor: pointer; background: #fff; }
 
-  /* Small bottom dots — one per space that's booked at some point that
-     day. Dates stay fully clickable either way; the dots are just a
-     quick visual hint, with the real detail shown once you click in. */
-  .cal-day-dots{
-    position:absolute;
-    bottom:3px;
-    left:0;
-    right:0;
-    display:flex;
-    justify-content:center;
-    gap:3px;
-  }
-  .cal-day-dot{
-    width:4px;
-    height:4px;
-    border-radius:50%;
-  }
-  .cal-day-dot.studio{background:var(--studio-color);}
-  .cal-day-dot.darkroom{background:var(--darkroom-color);}
-  .cal-day-num{
-    position:relative;
-    z-index:1;
-  }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 560px) {
+            .form-row { grid-template-columns: 1fr; }
+            .container { padding: 24px; }
+        }
 
-  .cal-legend{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:6px 10px;
-    margin-top:8px;
-    font-size:0.68rem;
-    color:var(--fog);
-  }
-  .cal-legend span{
-    display:inline-flex;
-    align-items:center;
-    gap:5px;
-  }
-  .cal-legend .swatch{
-    width:8px; height:8px;
-    border-radius:2px;
-    border:1px solid var(--line);
-    display:inline-block;
-    flex-shrink:0;
-  }
-  .cal-legend .swatch.selected{background:var(--ink); border-color:var(--ink);}
-  .cal-legend .dot{
-    width:6px; height:6px;
-    border-radius:50%;
-    display:inline-block;
-    flex-shrink:0;
-  }
-  .cal-legend .dot.studio{background:var(--studio-color);}
-  .cal-legend .dot.darkroom{background:var(--darkroom-color);}
+        button {
+            width: 100%; padding: 14px 20px; background: var(--ink); color: #fff; border: none;
+            border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer;
+            transition: opacity 0.2s ease; margin-top: 6px;
+        }
+        button:hover { opacity: 0.85; }
+        button:disabled { opacity: 0.5; cursor: default; }
 
-  .cal-message{
-    margin-top:0;
-    font-size:0.8rem;
-    padding:0 12px;
-    border-radius:2px;
-    background:#fafafa;
-    border:1px solid var(--line);
-    color:var(--ink);
-    opacity:0;
-    max-height:0;
-    overflow:hidden;
-    transition:opacity 0.2s, max-height 0.2s, margin-top 0.2s, padding 0.2s;
-  }
-  .cal-message.is-visible{
-    opacity:1;
-    max-height:50px;
-    padding:8px 12px;
-    margin-top:10px;
-  }
+        .success-message, .error-message {
+            display: none; padding: 14px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;
+        }
+        .success-message { background: #c6f6d5; color: #22543d; }
+        .error-message { background: #fed7d7; color: #742a2a; }
 
-  /* ---------- Day detail (hour-by-hour) ---------- */
-  .day-detail{
-    margin-top:10px;
-    padding-top:10px;
-    border-top:1px solid var(--line);
-    display:none;
-  }
-  .day-detail.is-visible{display:block;}
-  .day-detail-title{
-    font-weight:500;
-    font-size:0.85rem;
-    margin:0 0 6px;
-  }
+        /* ==========================================================
+           DATE POPUP — calendar + hour detail, opened from the
+           Preferred Date field
+           ========================================================== */
+        .cal-popup{
+            display:none;
+            position:absolute;
+            z-index:20;
+            top:calc(100% + 6px);
+            left:0;
+            width:min(340px, 88vw);
+            max-height:420px;
+            overflow-y:auto;
+            background:#fff;
+            border:1px solid var(--line);
+            border-radius:8px;
+            box-shadow:0 10px 30px rgba(0,0,0,0.12);
+            padding:14px;
+            font-size:0.78rem;
+        }
+        .cal-popup.is-open{display:block;}
 
-  .quick-select{
-    display:flex;
-    gap:5px;
-    flex-wrap:wrap;
-    margin-bottom:8px;
-  }
-  .quick-btn{
-    font-family:'Inter', sans-serif;
-    font-size:0.72rem;
-    padding:5px 8px;
-    border:1px solid var(--line);
-    border-radius:6px;
-    background:#fff;
-    color:var(--ink);
-    cursor:pointer;
-    transition:border-color 0.15s;
-  }
-  .quick-btn:hover{border-color:var(--ink);}
+        .cal-nav{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-bottom:8px;
+        }
+        .cal-nav .cal-month{
+            font-weight:600;
+            font-size:0.88rem;
+            color:var(--ink);
+        }
+        .cal-nav button{
+            width:26px; height:26px; padding:0;
+            background:none;
+            border:1px solid var(--line);
+            border-radius:4px;
+            font-size:0.9rem;
+            font-weight:400;
+            color:var(--ink);
+            cursor:pointer;
+            margin:0;
+        }
+        .cal-nav button:hover{border-color:var(--ink); opacity:1;}
 
-  .hour-grid{
-    display:grid;
-    grid-template-columns:repeat(4, 1fr);
-    gap:5px;
-  }
-  .hour-slot{
-    border:1px solid var(--line);
-    border-radius:2px;
-    padding:5px 4px;
-    text-align:center;
-    font-size:0.74rem;
-    cursor:pointer;
-    background:#fff;
-    transition:background 0.12s, border-color 0.12s, color 0.12s;
-  }
-  .hour-slot.is-booked{
-    color:#c4c4c4;
-    background:var(--line-soft);
-    text-decoration:line-through;
-    cursor:not-allowed;
-  }
-  .hour-slot.is-tinted-studio{
-    background:rgba(95,146,149,0.16);
-    border-color:rgba(95,146,149,0.4);
-  }
-  .hour-slot.is-tinted-darkroom{
-    background:rgba(213,49,35,0.16);
-    border-color:rgba(213,49,35,0.4);
-  }
-  .hour-slot.is-selected{
-    background:var(--ink);
-    border-color:var(--ink);
-    color:#fff;
-  }
-  .hour-slot:not(.is-booked):hover{border-color:var(--ink);}
-  .hour-slot.is-shake{animation:shake 0.32s;}
+        .cal-grid{
+            display:grid;
+            grid-template-columns:repeat(7, 1fr);
+            gap:3px;
+        }
+        .cal-weekday{
+            text-align:center;
+            font-size:0.64rem;
+            color:var(--fog);
+            padding-bottom:3px;
+        }
+        .cal-day{
+            position:relative;
+            height:28px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:0.74rem;
+            border:1px solid var(--line);
+            border-radius:4px;
+            background:#fff;
+            cursor:pointer;
+            overflow:hidden;
+            transition:border-color 0.12s, color 0.12s;
+        }
+        .cal-day.is-empty{ border:none; cursor:default; pointer-events:none; }
+        .cal-day.is-past, .cal-day.is-full{
+            color:#d4d4d4;
+            background:#fbfbfb;
+            cursor:default;
+            pointer-events:none;
+        }
+        .cal-day.is-available:hover{ border-color:var(--ink); }
+        .cal-day.is-selected{
+            background:var(--ink);
+            border-color:var(--ink);
+            color:#fff;
+        }
+        .cal-day.is-selected .cal-day-dots{ display:none; }
+        .cal-day.is-today:not(.is-selected){ font-weight:700; border-color:var(--ink); }
+        .cal-day.is-shake{ animation:calShake 0.32s; }
+        @keyframes calShake{
+            0%,100%{transform:translateX(0);}
+            25%{transform:translateX(-3px);}
+            75%{transform:translateX(3px);}
+        }
 
-  .hour-summary{
-    margin-top:6px;
-    font-size:0.78rem;
-    color:var(--fog);
-  }
-  .clear-hours{
-    display:inline-block;
-    margin-top:5px;
-    background:none;
-    border:none;
-    padding:0;
-    font-size:0.74rem;
-    color:var(--fog);
-    text-decoration:underline;
-    cursor:pointer;
-  }
-  .clear-hours:hover{color:var(--ink);}
+        .cal-day-dots{
+            position:absolute; bottom:2px; left:0; right:0;
+            display:flex; justify-content:center; gap:3px;
+        }
+        .cal-day-dot{ width:4px; height:4px; border-radius:50%; }
+        .cal-day-dot.studio{ background:var(--studio-color); }
+        .cal-day-dot.darkroom{ background:var(--darkroom-color); }
+        .cal-day-num{ position:relative; z-index:1; }
 
-  @media (max-width:380px){
-    .hour-grid{grid-template-columns:repeat(2, 1fr);}
-  }
+        .cal-message{
+            margin-top:0;
+            font-size:0.74rem;
+            padding:0 10px;
+            border-radius:4px;
+            background:#fafafa;
+            border:1px solid var(--line);
+            color:var(--ink);
+            opacity:0;
+            max-height:0;
+            overflow:hidden;
+            transition:opacity 0.2s, max-height 0.2s, margin-top 0.2s, padding 0.2s;
+        }
+        .cal-message.is-visible{
+            opacity:1; max-height:50px; padding:7px 10px; margin-top:8px;
+        }
 
-  /* ---------- Section divider between calendar and form ---------- */
-  .section-divider{
-    border:none;
-    border-top:1px solid var(--line);
-    margin:18px 0 14px;
-  }
+        .day-detail{
+            margin-top:10px;
+            padding-top:10px;
+            border-top:1px solid var(--line);
+            display:none;
+        }
+        .day-detail.is-visible{ display:block; }
+        .day-detail-title{
+            font-weight:600;
+            font-size:0.8rem;
+            margin:0 0 6px;
+            color:var(--ink);
+        }
 
-  /* ---------- Quote form (carried over unchanged) ---------- */
-  fieldset{
-    border:none;
-    padding:0;
-    margin:0 0 5px;
-  }
-  legend{
-    font-size:0.66rem;
-    letter-spacing:0.04em;
-    text-transform:uppercase;
-    color:var(--fog);
-    font-weight:500;
-    margin-bottom:3px;
-    padding:0;
-  }
+        .quick-select{ display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px; }
+        .quick-btn{
+            width:auto;
+            font-family:inherit;
+            font-size:0.68rem;
+            padding:5px 7px;
+            border:1px solid var(--line);
+            border-radius:6px;
+            background:#fff;
+            color:var(--ink);
+            cursor:pointer;
+        }
+        .quick-btn:hover{ border-color:var(--ink); }
 
-  .field-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
-    gap:3px 9px;
-  }
-  .field{margin-bottom:3px;}
-  .field label{
-    display:block;
-    font-size:0.76rem;
-    font-weight:500;
-    color:var(--ink);
-    margin-bottom:2px;
-  }
-  .field .hint{
-    font-weight:400;
-    color:var(--fog);
-    font-size:0.72rem;
-  }
-  input[type="text"],
-  input[type="email"],
-  input[type="tel"],
-  input[type="date"],
-  input[type="time"],
-  textarea,
-  select{
-    width:100%;
-    font-family:'Inter', sans-serif;
-    font-size:0.86rem;
-    color:var(--ink);
-    background:#fff;
-    border:1px solid var(--line);
-    border-radius:2px;
-    padding:3px 6px;
-  }
-  textarea{
-    resize:vertical;
-    min-height:26px;
-    line-height:1.3;
-  }
-  input:focus, select:focus, textarea:focus{
-    outline:none;
-    border-color:var(--ink);
-  }
+        .hour-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; }
+        .hour-slot{
+            border:1px solid var(--line);
+            border-radius:4px;
+            padding:5px 3px;
+            text-align:center;
+            font-size:0.68rem;
+            cursor:pointer;
+            background:#fff;
+        }
+        .hour-slot.is-booked{
+            color:#c4c4c4;
+            background:var(--line-soft);
+            text-decoration:line-through;
+            cursor:not-allowed;
+        }
+        .hour-slot.is-tinted-studio{ background:rgba(95,146,149,0.16); border-color:rgba(95,146,149,0.4); }
+        .hour-slot.is-tinted-darkroom{ background:rgba(213,49,35,0.16); border-color:rgba(213,49,35,0.4); }
+        .hour-slot.is-selected{ background:var(--ink); border-color:var(--ink); color:#fff; }
+        .hour-slot:not(.is-booked):hover{ border-color:var(--ink); }
+        .hour-slot.is-shake{ animation:calShake 0.32s; }
 
-  .booking-row{
-    display:flex;
-    flex-direction:column;
-    gap:5px;
-  }
-  .field-package{width:100%;}
-  .field-duration{width:100%;}
+        .hour-summary{ margin-top:6px; font-size:0.72rem; color:var(--fog); }
+        .clear-hours{
+            display:inline-block; margin-top:5px;
+            background:none; border:none; padding:0;
+            font-size:0.7rem; color:var(--fog);
+            text-decoration:underline; cursor:pointer; width:auto;
+        }
 
-  /* Shared segmented-control style */
-  .segmented{
-    display:flex;
-    gap:4px;
-    flex-wrap:nowrap;
-  }
-  .segmented label{
-    display:block;
-    flex:1;
-    min-width:0;
-    text-align:center;
-    padding:3px 4px;
-    border:1px solid var(--line);
-    border-radius:6px;
-    background:#fff;
-    cursor:pointer;
-    font-size:0.72rem;
-    transition:border-color 0.15s, background 0.15s;
-  }
-  .segmented input{position:absolute; opacity:0; pointer-events:none;}
-  .segmented input:checked + label{
-    border-color:var(--ink);
-    background:var(--line-soft);
-  }
-  .segmented .radio-wrap{position:relative; flex:1; min-width:0;}
-  .segmented .radio-wrap.is-disabled{
-    opacity:0.4;
-    pointer-events:none;
-  }
-  .segmented .amt{display:block; color:var(--fog); font-size:0.66rem; margin-top:0;}
+        /* Legend sits at the very bottom of the popup */
+        .cal-legend{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:5px 8px;
+            margin-top:12px;
+            padding-top:10px;
+            border-top:1px solid var(--line);
+            font-size:0.64rem;
+            color:var(--fog);
+        }
+        .cal-legend span{ display:inline-flex; align-items:center; gap:5px; }
+        .cal-legend .swatch{
+            width:8px; height:8px; border-radius:2px;
+            border:1px solid var(--line); display:inline-block; flex-shrink:0;
+        }
+        .cal-legend .swatch.selected{ background:var(--ink); border-color:var(--ink); }
+        .cal-legend .dot{ width:6px; height:6px; border-radius:50%; display:inline-block; flex-shrink:0; }
+        .cal-legend .dot.studio{ background:var(--studio-color); }
+        .cal-legend .dot.darkroom{ background:var(--darkroom-color); }
 
-  .field-note{
-    font-size:0.71rem;
-    color:var(--fog);
-    margin-top:3px;
-  }
+        .cal-done-btn{
+            margin-top:10px;
+            padding:8px 14px;
+            font-size:0.78rem;
+            font-weight:600;
+        }
 
-  .price-card{
-    border:1px solid #b9d3e8;
-    border-radius:10px;
-    padding:6px 11px;
-    width:100%;
-    margin:2px auto 0;
-    box-sizing:border-box;
-  }
-  .total-strip{
-    display:flex;
-    justify-content:flex-end;
-    align-items:baseline;
-    gap:7px;
-    padding:0;
-    margin:0 0 3px;
-  }
-  .total-strip .t-label{
-    font-size:0.74rem;
-    color:var(--fog);
-    font-weight:500;
-  }
-  .total-strip .t-value{
-    font-size:1.15rem;
-    font-weight:600;
-  }
+        /* ==========================================================
+           Duration segmented control
+           ========================================================== */
+        .segmented{ display:flex; gap:4px; }
+        .segmented .radio-wrap{ position:relative; flex:1; min-width:0; }
+        .segmented input{ position:absolute; opacity:0; pointer-events:none; }
+        .segmented label{
+            display:block; text-align:center;
+            padding:11px 6px; border:1px solid var(--line); border-radius:6px;
+            background:#fff; cursor:pointer; font-size:0.82rem;
+            transition:border-color 0.15s, background 0.15s; margin:0;
+        }
+        .segmented input:checked + label{
+            border-color:var(--ink);
+            background:var(--line-soft);
+            font-weight:600;
+        }
+        .segmented .radio-wrap.is-disabled{ opacity:0.4; pointer-events:none; }
 
-  .submit-row{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:3px;
-  }
-  button.send{
-    width:100%;
-    font-family:'Inter', sans-serif;
-    font-weight:500;
-    font-size:0.84rem;
-    color:#fff;
-    background:var(--ink);
-    border:none;
-    padding:6px 18px;
-    border-radius:6px;
-    cursor:pointer;
-    transition:opacity 0.15s;
-  }
-  button.send:hover{opacity:0.85;}
-  button.send:disabled{opacity:0.6; cursor:default;}
-  .submit-hint{
-    font-size:0.73rem;
-    color:var(--fog);
-  }
-  .form-status{
-    font-size:0.78rem;
-    margin:6px 0 0;
-    display:none;
-    text-align:center;
-  }
-  .form-status.is-visible{display:block;}
-  .form-status.is-success{color:#2a7a3b;}
-  .form-status.is-error{color:#b03a2e;}
-</style>
+        /* ==========================================================
+           Studio assistant toggle button
+           ========================================================== */
+        .toggle-btn{
+            width:100%;
+            background:#fff;
+            color:var(--ink);
+            border:1px solid var(--line);
+            text-align:left;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-top:0;
+        }
+        .toggle-btn .toggle-dot{
+            width:16px; height:16px; border-radius:50%;
+            border:1px solid var(--line);
+            flex-shrink:0;
+            position:relative;
+        }
+        .toggle-btn.is-active{
+            background:var(--ink);
+            color:#fff;
+            border-color:var(--ink);
+        }
+        .toggle-btn.is-active .toggle-dot{
+            border-color:#fff;
+            background:#fff;
+        }
+        .toggle-btn.is-active .toggle-dot::after{
+            content:"";
+            position:absolute; inset:3px;
+            border-radius:50%;
+            background:var(--ink);
+        }
+
+        /* ==========================================================
+           Price / cost estimate card
+           ========================================================== */
+        .price-card{
+            border:1px solid var(--line);
+            border-radius:8px;
+            padding:14px 16px;
+            margin:4px 0 16px;
+        }
+        .price-row{
+            display:flex;
+            justify-content:space-between;
+            align-items:baseline;
+        }
+        .price-row .p-label{ font-size:0.82rem; color:var(--fog); font-weight:600; }
+        .price-row .p-value{ font-size:1.3rem; font-weight:700; color:var(--ink); }
+        .price-note{ font-size:0.74rem; color:var(--fog); margin-top:4px; }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>Book Byre Studios</h1>
 
-<div class="wrap">
-<div class="layout">
+        <div class="success-message" id="successMessage">Thanks — your booking request has been sent. We'll confirm shortly.</div>
+        <div class="error-message" id="errorMessage">There was an issue submitting your request. Please try again, or email us directly at contact@byrestudios.co.uk.</div>
 
-  <!-- ================= AVAILABILITY CALENDAR ================= -->
-  <div class="col-calendar">
+        <form id="bookingForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name" class="required">Full Name</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="email" class="required">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+            </div>
 
-  <div class="cal-nav">
-    <button type="button" id="calPrev" aria-label="Previous month">‹</button>
-    <span class="cal-month" id="calMonthLabel"></span>
-    <button type="button" id="calNext" aria-label="Next month">›</button>
-  </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="phone">Phone</label>
+                    <input type="tel" id="phone" name="phone">
+                </div>
+                <div class="form-group">
+                    <label for="space" class="required">Space</label>
+                    <select id="space" name="space" required>
+                        <option value="">Select a space...</option>
+                        <option value="Studio">Studio</option>
+                        <option value="Darkroom">Darkroom</option>
+                        <option value="Studio + Darkroom">Studio + Darkroom</option>
+                    </select>
+                </div>
+            </div>
 
-  <div class="cal-grid" id="calWeekdays"></div>
-  <div class="cal-grid" id="calGrid" style="margin-top:4px;"></div>
+            <div class="form-group">
+                <label>Duration</label>
+                <div class="segmented" id="durationGroup">
+                    <div class="radio-wrap" id="durRow1h">
+                        <input type="radio" id="dur-1h" name="duration" value="1h" checked>
+                        <label for="dur-1h">1 hour</label>
+                    </div>
+                    <div class="radio-wrap">
+                        <input type="radio" id="dur-half" name="duration" value="half">
+                        <label for="dur-half">Half day</label>
+                    </div>
+                    <div class="radio-wrap">
+                        <input type="radio" id="dur-full" name="duration" value="full">
+                        <label for="dur-full">Full day</label>
+                    </div>
+                </div>
+            </div>
 
-  <div class="cal-legend">
-    <span><span class="swatch"></span>Available</span>
-    <span><span class="dot studio"></span>Studio partially booked</span>
-    <span><span class="dot darkroom"></span>Darkroom partially booked</span>
-    <span><span class="swatch selected"></span>Selected</span>
-  </div>
+            <div class="form-group">
+                <label>Studio Assistant</label>
+                <button type="button" class="toggle-btn" id="assistantToggle" aria-pressed="false">
+                    <span>Request a studio assistant</span>
+                    <span class="toggle-dot"></span>
+                </button>
+            </div>
 
-  <div class="cal-message" id="calMessage"></div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date" class="required">Preferred Date</label>
+                    <input type="text" id="date" name="preferred_date" placeholder="Select a date" readonly required autocomplete="off">
 
-  <div class="day-detail" id="dayDetail">
-    <p class="day-detail-title" id="dayDetailTitle"></p>
+                    <!-- ============== CALENDAR POPUP ============== -->
+                    <div class="cal-popup" id="calPopup">
 
-    <div class="quick-select">
-      <button type="button" class="quick-btn" data-quick="morning">Morning (9–13)</button>
-      <button type="button" class="quick-btn" data-quick="afternoon">Afternoon (13–17)</button>
-      <button type="button" class="quick-btn" data-quick="full">Full day (9–17)</button>
+                        <div class="cal-nav">
+                            <button type="button" id="calPrev" aria-label="Previous month">‹</button>
+                            <span class="cal-month" id="calMonthLabel"></span>
+                            <button type="button" id="calNext" aria-label="Next month">›</button>
+                        </div>
+
+                        <div class="cal-grid" id="calWeekdays"></div>
+                        <div class="cal-grid" id="calGrid" style="margin-top:4px;"></div>
+
+                        <div class="cal-message" id="calMessage"></div>
+
+                        <div class="day-detail" id="dayDetail">
+                            <p class="day-detail-title" id="dayDetailTitle"></p>
+
+                            <div class="quick-select">
+                                <button type="button" class="quick-btn" data-quick="morning">Morning (9–13)</button>
+                                <button type="button" class="quick-btn" data-quick="afternoon">Afternoon (13–17)</button>
+                                <button type="button" class="quick-btn" data-quick="full">Full day (9–17)</button>
+                            </div>
+
+                            <div class="hour-grid" id="hourGrid"></div>
+
+                            <p class="hour-summary" id="hourSummary"></p>
+                            <button type="button" class="clear-hours" id="clearHours">Clear selection</button>
+                        </div>
+
+                        <!-- Legend sits at the bottom of the popup, as requested -->
+                        <div class="cal-legend">
+                            <span><span class="swatch"></span>Available</span>
+                            <span><span class="dot studio"></span>Studio partially booked</span>
+                            <span><span class="dot darkroom"></span>Darkroom partially booked</span>
+                            <span><span class="swatch selected"></span>Selected</span>
+                        </div>
+
+                        <button type="button" class="cal-done-btn" id="calDoneBtn">Done</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="time" class="required">Preferred Time</label>
+                    <input type="text" id="time" name="preferred_time" placeholder="Pick a date first" readonly required autocomplete="off">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes (Optional)</label>
+                <textarea id="notes" name="notes" placeholder="Shoot concept, group size, access needs, colour or black and white darkroom, etc."></textarea>
+            </div>
+
+            <div class="price-card">
+                <div class="price-row">
+                    <span class="p-label">Estimated total</span>
+                    <span class="p-value" id="totalDisplay">Select a space</span>
+                </div>
+                <p class="price-note" id="priceNote"></p>
+            </div>
+
+            <button type="submit" id="submitBtn">Request Booking</button>
+        </form>
     </div>
 
-    <div class="hour-grid" id="hourGrid"></div>
+    <script>
+        // ==========================================================
+        // AVAILABILITY DATA
+        // ==========================================================
+        // Studio and Darkroom are tracked separately, since they're two
+        // independent bookable spaces and can be booked at the same time
+        // by different clients.
+        //
+        // For each, add an entry below using the date ('YYYY-MM-DD') as
+        // the key and a list of the booked start-hours as the value.
+        // Hours run 9 to 16 (each is a 1-hour slot, e.g. 9 = 9:00–10:00).
+        // Morning = 9,10,11,12 — Afternoon = 13,14,15,16 — Full day = all 8.
+        //
+        // Examples:
+        //   Darkroom booked in the morning only:
+        //     '2026-07-24': [9, 10, 11, 12],
+        //   Darkroom booked all day:
+        //     '2026-07-25': [9, 10, 11, 12, 13, 14, 15, 16],
+        //
+        // A date doesn't need an entry unless some part of it is booked.
+        const STUDIO_BOOKED_HOURS = {
+            // '2026-07-21': [9, 10, 11, 12],
+        };
 
-    <p class="hour-summary" id="hourSummary"></p>
-    <button type="button" class="clear-hours" id="clearHours">Clear selection</button>
-  </div>
+        const DARKROOM_BOOKED_HOURS = {
+            // '2026-07-24': [9, 10, 11, 12],
+            // '2026-07-25': [9, 10, 11, 12, 13, 14, 15, 16],
+        };
 
-  </div>
+        const OPEN_HOUR = 9;
+        const CLOSE_HOUR = 17;
 
-  <hr class="section-divider">
+        // ==========================================================
+        // CALENDAR
+        // ==========================================================
+        const dateInputEl = document.getElementById('date');
+        const timeInputEl = document.getElementById('time');
+        const calPopup = document.getElementById('calPopup');
+        const calMonthLabel = document.getElementById('calMonthLabel');
+        const calWeekdaysEl = document.getElementById('calWeekdays');
+        const calGridEl = document.getElementById('calGrid');
+        const calMessageEl = document.getElementById('calMessage');
+        const calPrevBtn = document.getElementById('calPrev');
+        const calNextBtn = document.getElementById('calNext');
+        const calDoneBtn = document.getElementById('calDoneBtn');
 
-  <!-- ================= QUOTE / BOOKING FORM ================= -->
-  <div class="col-form">
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        let viewYear = today.getFullYear();
+        let viewMonth = today.getMonth();
+        let selectedDateStr = null;
 
-  <form id="quoteForm">
+        const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+        const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
-    <fieldset>
-      <div class="field-grid">
-        <div class="field">
-          <label for="name">Name</label>
-          <input type="text" id="name" name="name" required>
-        </div>
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" required>
-        </div>
-        <div class="field">
-          <label for="phone">Phone <span class="hint">(optional)</span></label>
-          <input type="tel" id="phone" name="phone">
-        </div>
-      </div>
-    </fieldset>
+        function pad(n){ return n < 10 ? '0' + n : '' + n; }
+        function toDateStr(y, m, d){ return `${y}-${pad(m + 1)}-${pad(d)}`; }
 
-    <fieldset>
-      <legend>What you're booking</legend>
-      <div class="booking-row">
-        <div class="field field-package">
-          <label for="package">Package</label>
-          <select id="package" name="package">
-            <option value="studio">Studio</option>
-            <option value="darkroom">Darkroom</option>
-            <option value="bundle">Studio + Darkroom bundle</option>
-          </select>
-        </div>
+        function getStudioHours(dateStr){ return STUDIO_BOOKED_HOURS[dateStr] || []; }
+        function getDarkroomHours(dateStr){ return DARKROOM_BOOKED_HOURS[dateStr] || []; }
+        function isStudioBookedThatDay(dateStr){ return getStudioHours(dateStr).length > 0; }
+        function isDarkroomBookedThatDay(dateStr){ return getDarkroomHours(dateStr).length > 0; }
 
-        <div class="field field-duration">
-          <label>Duration</label>
-          <div class="segmented" id="durationGroup">
-            <div class="radio-wrap">
-              <input type="radio" id="dur-1h" name="duration" value="1h" checked>
-              <label for="dur-1h">1 hour</label>
-            </div>
-            <div class="radio-wrap">
-              <input type="radio" id="dur-half" name="duration" value="half">
-              <label for="dur-half">Half day</label>
-            </div>
-            <div class="radio-wrap">
-              <input type="radio" id="dur-full" name="duration" value="full">
-              <label for="dur-full">Full day</label>
-            </div>
-          </div>
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Studio assistant</legend>
-      <div class="segmented" id="assistantGroup">
-        <div class="radio-wrap">
-          <input type="radio" id="assist-none" name="assistant" value="none" checked>
-          <label for="assist-none">None</label>
-        </div>
-        <div class="radio-wrap">
-          <input type="radio" id="assist-1h" name="assistant" value="1h" data-price="30">
-          <label for="assist-1h">1 hour <span class="amt">+£30</span></label>
-        </div>
-        <div class="radio-wrap" id="assist3Row">
-          <input type="radio" id="assist-3h" name="assistant" value="3h" data-price="80">
-          <label for="assist-3h">3 hours <span class="amt">+£80</span></label>
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Date request</legend>
-      <div class="field-grid">
-        <div class="field">
-          <label for="date">Preferred date</label>
-          <input type="date" id="date" name="date">
-        </div>
-        <div class="field">
-          <label for="time">Start time</label>
-          <input type="time" id="time" name="time">
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Anything else we should know?</legend>
-      <div class="field">
-        <textarea id="notes" name="notes" rows="2" placeholder="Optional — shoot concept, group size, access needs, colour or black and white darkroom, etc."></textarea>
-      </div>
-    </fieldset>
-
-    <div class="price-card">
-      <div class="total-strip">
-        <span class="t-label">Estimated total</span>
-        <span class="t-value">£<span id="totalAmount">40</span></span>
-      </div>
-
-      <div class="submit-row">
-        <button type="submit" class="send" id="sendBtn">Send request</button>
-        <p class="form-status" id="formStatus"></p>
-      </div>
-    </div>
-
-  </form>
-
-  </div>
-
-</div>
-</div>
-
-<script>
-  // ==========================================================
-  // AVAILABILITY DATA
-  // ==========================================================
-  // HOW TO UPDATE: Studio and Darkroom are tracked separately,
-  // since they're two independent bookable spaces and can be
-  // booked at the same time by different clients.
-  //
-  // For each, add an entry below using the date ('YYYY-MM-DD')
-  // as the key and a list of the booked start-hours as the value.
-  // Hours run 9 to 16 (each is a 1-hour slot, e.g. 9 = 9:00–10:00).
-  // Morning = 9,10,11,12 — Afternoon = 13,14,15,16 — Full day = all 8.
-  //
-  // Examples:
-  //   Darkroom booked in the morning only:
-  //     '2026-07-24': [9, 10, 11, 12],
-  //   Darkroom booked all day:
-  //     '2026-07-25': [9, 10, 11, 12, 13, 14, 15, 16],
-  //   Studio booked morning + Darkroom booked afternoon on the same
-  //   date: add [9,10,11,12] under STUDIO_BOOKED_HOURS for that date,
-  //   and [13,14,15,16] under DARKROOM_BOOKED_HOURS for the same date.
-  //
-  // A date doesn't need an entry unless some part of it is booked.
-  const STUDIO_BOOKED_HOURS = {
-    // '2026-07-21': [9, 10, 11, 12],
-  };
-
-  const DARKROOM_BOOKED_HOURS = {
-    // '2026-07-24': [9, 10, 11, 12],
-    // '2026-07-25': [9, 10, 11, 12, 13, 14, 15, 16],
-  };
-
-  // Studio operating hours for the day view. 9 to 17 gives 8 hourly
-  // start-times, matching the 8-hour "full day" rate.
-  const OPEN_HOUR = 9;
-  const CLOSE_HOUR = 17;
-  const MORNING_HOURS = [9, 10, 11, 12];
-  const AFTERNOON_HOURS = [13, 14, 15, 16];
-
-  // ==========================================================
-  // CALENDAR
-  // ==========================================================
-  const calMonthLabel = document.getElementById('calMonthLabel');
-  const calWeekdaysEl = document.getElementById('calWeekdays');
-  const calGridEl = document.getElementById('calGrid');
-  const calMessageEl = document.getElementById('calMessage');
-  const calPrevBtn = document.getElementById('calPrev');
-  const calNextBtn = document.getElementById('calNext');
-
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  let viewYear = today.getFullYear();
-  let viewMonth = today.getMonth(); // 0-indexed
-  let selectedDateStr = null;
-
-  const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-
-  function pad(n){ return n < 10 ? '0' + n : '' + n; }
-
-  function toDateStr(y, m, d){
-    return `${y}-${pad(m + 1)}-${pad(d)}`;
-  }
-
-  function getStudioHours(dateStr){
-    return STUDIO_BOOKED_HOURS[dateStr] || [];
-  }
-
-  function getDarkroomHours(dateStr){
-    return DARKROOM_BOOKED_HOURS[dateStr] || [];
-  }
-
-  // Is a given space booked for any hour at all that day?
-  function isStudioBookedThatDay(dateStr){
-    return getStudioHours(dateStr).length > 0;
-  }
-  function isDarkroomBookedThatDay(dateStr){
-    return getDarkroomHours(dateStr).length > 0;
-  }
-
-  // A date counts as fully booked (and gets greyed out, like a past
-  // date) only once every hour of the day is taken in BOTH spaces —
-  // i.e. there's genuinely nothing left to book that day.
-  function isDateFullyBooked(dateStr){
-    for(let h = OPEN_HOUR; h < CLOSE_HOUR; h++){
-      if(!isHourFullyBooked(dateStr, h)) return false;
-    }
-    return true;
-  }
-
-  function showCalMessage(text){
-    calMessageEl.textContent = text;
-    calMessageEl.classList.add('is-visible');
-    clearTimeout(showCalMessage._t);
-    showCalMessage._t = setTimeout(() => {
-      calMessageEl.classList.remove('is-visible');
-    }, 4000);
-  }
-
-  function renderWeekdays(){
-    calWeekdaysEl.innerHTML = WEEKDAYS.map(d => `<div class="cal-weekday">${d}</div>`).join('');
-  }
-
-  function renderCalendar(){
-    calMonthLabel.textContent = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
-
-    const firstOfMonth = new Date(viewYear, viewMonth, 1);
-    const startOffset = (firstOfMonth.getDay() + 6) % 7;
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-
-    let cells = '';
-
-    for(let i = 0; i < startOffset; i++){
-      cells += `<div class="cal-day is-empty"></div>`;
-    }
-
-    for(let d = 1; d <= daysInMonth; d++){
-      const dateStr = toDateStr(viewYear, viewMonth, d);
-      const cellDate = new Date(viewYear, viewMonth, d);
-      cellDate.setHours(0,0,0,0);
-
-      let classes = 'cal-day';
-      let dotsHtml = '';
-
-      if(cellDate < today){
-        classes += ' is-past';
-      } else if(isDateFullyBooked(dateStr)){
-        classes += ' is-full';
-      } else {
-        classes += ' is-available';
-
-        const dots = [];
-        if(isStudioBookedThatDay(dateStr)) dots.push('<span class="cal-day-dot studio"></span>');
-        if(isDarkroomBookedThatDay(dateStr)) dots.push('<span class="cal-day-dot darkroom"></span>');
-        if(dots.length){
-          dotsHtml = `<span class="cal-day-dots">${dots.join('')}</span>`;
+        function isHourFullyBooked(dateStr, hour){
+            return getStudioHours(dateStr).includes(hour) && getDarkroomHours(dateStr).includes(hour);
         }
-      }
-
-      if(dateStr === toDateStr(today.getFullYear(), today.getMonth(), today.getDate())){
-        classes += ' is-today';
-      }
-      if(dateStr === selectedDateStr){
-        classes += ' is-selected';
-      }
-
-      cells += `<div class="${classes}" data-date="${dateStr}">${dotsHtml}<span class="cal-day-num">${d}</span></div>`;
-    }
-
-    calGridEl.innerHTML = cells;
-
-    calGridEl.querySelectorAll('.cal-day.is-available').forEach(cell => {
-      cell.addEventListener('click', onDayClick);
-    });
-  }
-
-  function onDayClick(e){
-    const cell = e.currentTarget;
-    const dateStr = cell.dataset.date;
-
-    selectedDateStr = dateStr;
-    renderCalendar();
-    openDayDetail(dateStr);
-  }
-
-  calPrevBtn.addEventListener('click', () => {
-    viewMonth--;
-    if(viewMonth < 0){ viewMonth = 11; viewYear--; }
-    renderCalendar();
-  });
-  calNextBtn.addEventListener('click', () => {
-    viewMonth++;
-    if(viewMonth > 11){ viewMonth = 0; viewYear++; }
-    renderCalendar();
-  });
-
-  // ==========================================================
-  // HOUR-BY-HOUR DAY DETAIL
-  // ==========================================================
-  // An hour only shows as fully "booked" (unselectable) here if BOTH
-  // Studio and Darkroom are taken at that hour. If only one space is
-  // booked, the slot stays selectable but gets a light colour tint
-  // to flag that one space is already taken then.
-  const dayDetailEl = document.getElementById('dayDetail');
-  const dayDetailTitle = document.getElementById('dayDetailTitle');
-  const hourGridEl = document.getElementById('hourGrid');
-  const hourSummaryEl = document.getElementById('hourSummary');
-  const clearHoursBtn = document.getElementById('clearHours');
-
-  let selectedHours = new Set();
-  let hourDetailDateStr = null;
-
-  function formatHour(h){
-    return `${h}:00`;
-  }
-
-  function isHourFullyBooked(dateStr, hour){
-    return getStudioHours(dateStr).includes(hour) && getDarkroomHours(dateStr).includes(hour);
-  }
-
-  // Groups a set of hours into contiguous ranges, e.g.
-  // [9,10,11,14] -> "9:00–12:00, 14:00–15:00"
-  function groupContiguousHours(hoursArray){
-    const sorted = Array.from(hoursArray).sort((a, b) => a - b);
-    const ranges = [];
-    let start = sorted[0];
-    let prev = sorted[0];
-
-    for(let i = 1; i <= sorted.length; i++){
-      const current = sorted[i];
-      if(current !== prev + 1){
-        ranges.push([start, prev]);
-        start = current;
-      }
-      prev = current;
-    }
-
-    const rangeText = ranges.map(([s, e]) => `${formatHour(s)}–${formatHour(e + 1)}`).join(', ');
-    return { rangeText, hourCount: sorted.length };
-  }
-
-  function openDayDetail(dateStr){
-    hourDetailDateStr = dateStr;
-    selectedHours = new Set();
-
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const dateObj = new Date(y, m - 1, d);
-    dayDetailTitle.textContent = `${DAY_NAMES[dateObj.getDay()]} ${d} ${MONTH_NAMES[m - 1]}`;
-
-    dayDetailEl.classList.add('is-visible');
-    renderHourGrid();
-    updateHourSummary();
-    dayDetailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    // Keep the booking form's date field in sync as soon as a day is picked.
-    syncSelectionToForm();
-  }
-
-  function hideDayDetail(){
-    dayDetailEl.classList.remove('is-visible');
-    hourDetailDateStr = null;
-    selectedHours = new Set();
-  }
-
-  function renderHourGrid(){
-    if(!hourDetailDateStr) return;
-
-    const studioHours = getStudioHours(hourDetailDateStr);
-    const darkroomHours = getDarkroomHours(hourDetailDateStr);
-
-    let cells = '';
-    for(let h = OPEN_HOUR; h < CLOSE_HOUR; h++){
-      const studioBooked = studioHours.includes(h);
-      const darkroomBooked = darkroomHours.includes(h);
-      const isSelected = selectedHours.has(h);
-
-      let classes = 'hour-slot';
-      if(studioBooked && darkroomBooked){
-        classes += ' is-booked';
-      } else if(studioBooked){
-        classes += ' is-tinted-studio';
-      } else if(darkroomBooked){
-        classes += ' is-tinted-darkroom';
-      }
-      if(isSelected) classes += ' is-selected';
-
-      cells += `<div class="${classes}" data-hour="${h}">${formatHour(h)}–${formatHour(h + 1)}</div>`;
-    }
-    hourGridEl.innerHTML = cells;
-
-    hourGridEl.querySelectorAll('.hour-slot').forEach(cell => {
-      cell.addEventListener('click', onHourClick);
-    });
-  }
-
-  function onHourClick(e){
-    const cell = e.currentTarget;
-    const hour = parseInt(cell.dataset.hour, 10);
-
-    if(cell.classList.contains('is-booked')){
-      cell.classList.remove('is-shake');
-      void cell.offsetWidth;
-      cell.classList.add('is-shake');
-      showCalMessage("That hour's already booked — pick another slot.");
-      return;
-    }
-
-    if(selectedHours.has(hour)){
-      selectedHours.delete(hour);
-    } else {
-      selectedHours.add(hour);
-    }
-    renderHourGrid();
-    updateHourSummary();
-  }
-
-  // Groups selected hours into contiguous ranges, e.g. [9,10,11,14] -> "9:00–12:00, 14:00–15:00"
-  function summariseSelectedHours(){
-    if(selectedHours.size === 0) return null;
-    return groupContiguousHours(selectedHours);
-  }
-
-  function updateHourSummary(){
-    const summary = summariseSelectedHours();
-
-    if(!summary){
-      hourSummaryEl.textContent = '';
-    } else {
-      hourSummaryEl.textContent = `Selected: ${summary.rangeText} (${summary.hourCount} hour${summary.hourCount !== 1 ? 's' : ''})`;
-    }
-
-    // Push whatever is currently selected into the booking form below.
-    syncSelectionToForm();
-  }
-
-  function selectHourRange(startHour, endHourExclusive){
-    selectedHours = new Set();
-    for(let h = startHour; h < endHourExclusive; h++){
-      if(!isHourFullyBooked(hourDetailDateStr, h)){
-        selectedHours.add(h);
-      }
-    }
-    renderHourGrid();
-    updateHourSummary();
-  }
-
-  document.querySelectorAll('.quick-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const quick = btn.dataset.quick;
-      if(quick === 'morning') selectHourRange(OPEN_HOUR, OPEN_HOUR + 4);
-      if(quick === 'afternoon') selectHourRange(OPEN_HOUR + 4, CLOSE_HOUR);
-      if(quick === 'full') selectHourRange(OPEN_HOUR, CLOSE_HOUR);
-    });
-  });
-
-  clearHoursBtn.addEventListener('click', () => {
-    selectedHours = new Set();
-    renderHourGrid();
-    updateHourSummary();
-  });
-
-  renderWeekdays();
-  renderCalendar();
-
-  // ==========================================================
-  // QUOTE / BOOKING FORM
-  // ==========================================================
-  const PRICES = {
-    studio:   { '1h': 40, half: 120, full: 240 },
-    darkroom: { '1h': 20, half: 80,  full: 140 },
-    bundle:   { '1h': null, half: 150, full: 300 }
-  };
-
-  const packageEl = document.getElementById('package');
-  const durationGroup = document.getElementById('durationGroup');
-  const totalEl = document.getElementById('totalAmount');
-  const form = document.getElementById('quoteForm');
-  const dateInputEl = document.getElementById('date');
-  const timeInputEl = document.getElementById('time');
-
-  function getSelectedDuration(){
-    const checked = durationGroup.querySelector('input[name="duration"]:checked');
-    return checked ? checked.value : '1h';
-  }
-
-  const assist3Row = document.getElementById('assist3Row');
-  const assist3Input = document.getElementById('assist-3h');
-  const assistNoneInput = document.getElementById('assist-none');
-
-  function updateAssist3Availability(){
-    const dur = getSelectedDuration();
-    if(dur === '1h'){
-      assist3Row.classList.add('is-disabled');
-      if(assist3Input.checked){
-        assistNoneInput.checked = true;
-      }
-    } else {
-      assist3Row.classList.remove('is-disabled');
-    }
-  }
-
-  function calcTotal(){
-    const pkg = packageEl.value;
-    const dur = getSelectedDuration();
-    let base = PRICES[pkg][dur];
-    if(base === null){
-      base = PRICES[pkg]['half'];
-    }
-
-    const assistantChecked = document.querySelector('input[name="assistant"]:checked');
-    const addons = assistantChecked && assistantChecked.dataset.price
-      ? parseFloat(assistantChecked.dataset.price)
-      : 0;
-
-    totalEl.textContent = (base + addons).toFixed(0);
-  }
-
-  packageEl.addEventListener('change', calcTotal);
-  durationGroup.addEventListener('change', function(){
-    updateAssist3Availability();
-    calcTotal();
-  });
-  document.querySelectorAll('input[name="assistant"]').forEach(el => {
-    el.addEventListener('change', calcTotal);
-  });
-  updateAssist3Availability();
-  calcTotal();
-
-  // ----------------------------------------------------------
-  // CALENDAR → FORM SYNC
-  // ----------------------------------------------------------
-  // Pushes whatever's currently selected on the calendar into the
-  // form's date/time fields, and — when the selected hours line up
-  // exactly with a priced duration block — ticks the matching
-  // Duration radio too. Called whenever a date or hour selection
-  // changes above.
-  function setDuration(value){
-    const radio = document.querySelector(`input[name="duration"][value="${value}"]`);
-    if(radio && !radio.checked){
-      radio.checked = true;
-      updateAssist3Availability();
-      calcTotal();
-    }
-  }
-
-  function syncSelectionToForm(){
-    if(selectedDateStr){
-      dateInputEl.value = selectedDateStr;
-    }
-
-    if(selectedHours.size === 0) return;
-
-    const sortedHours = Array.from(selectedHours).sort((a, b) => a - b);
-    timeInputEl.value = `${pad(sortedHours[0])}:00`;
-
-    const first = sortedHours[0];
-    const last = sortedHours[sortedHours.length - 1];
-    const isContiguous = (last - first + 1) === sortedHours.length;
-
-    if(isContiguous){
-      const span = sortedHours.length;
-      if(span === 1){
-        setDuration('1h');
-      } else if(span === 4 && (first === OPEN_HOUR || first === OPEN_HOUR + 4)){
-        setDuration('half');
-      } else if(span === 8 && first === OPEN_HOUR){
-        setDuration('full');
-      }
-    }
-  }
-
-  // ----------------------------------------------------------
-  // FORM → CALENDAR SYNC
-  // ----------------------------------------------------------
-  // The reverse direction: adjusting the Preferred date or Start
-  // time fields moves the calendar's own selection to match.
-  const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
-  dateInputEl.min = todayStr;
-
-  // Applies whatever's currently in the Start time field to the
-  // open day-detail's hour grid, as a single selected hour.
-  function applyTimeInputToHours(){
-    if(!hourDetailDateStr) return;
-    const val = timeInputEl.value;
-    if(!val) return;
-
-    const hour = parseInt(val.split(':')[0], 10);
-    if(Number.isNaN(hour) || hour < OPEN_HOUR || hour >= CLOSE_HOUR) return;
-
-    if(isHourFullyBooked(hourDetailDateStr, hour)){
-      showCalMessage("That hour's already booked — pick another slot.");
-      return;
-    }
-
-    selectedHours = new Set([hour]);
-    renderHourGrid();
-    updateHourSummary();
-  }
-
-  dateInputEl.addEventListener('change', () => {
-    const val = dateInputEl.value;
-    if(!val) return;
-
-    if(val < todayStr){
-      showCalMessage("That date's already passed — pick a date from today onward.");
-      dateInputEl.value = selectedDateStr || '';
-      return;
-    }
-    if(isDateFullyBooked(val)){
-      showCalMessage("That date's fully booked — pick another day.");
-      dateInputEl.value = selectedDateStr || '';
-      return;
-    }
-
-    const [y, m] = val.split('-').map(Number);
-    viewYear = y;
-    viewMonth = m - 1;
-    selectedDateStr = val;
-    renderCalendar();
-    openDayDetail(val);
-    applyTimeInputToHours();
-  });
-
-  timeInputEl.addEventListener('change', () => {
-    if(!timeInputEl.value) return;
-
-    if(!selectedDateStr){
-      showCalMessage('Pick a date on the calendar above first.');
-      timeInputEl.value = '';
-      return;
-    }
-    if(hourDetailDateStr !== selectedDateStr){
-      openDayDetail(selectedDateStr);
-    }
-    applyTimeInputToHours();
-  });
-
-  // ==========================================================
-  // FORM SUBMISSION — sends a real email via Formspree instead
-  // of relying on the visitor's device having an email app set up.
-  // ==========================================================
-  // Sign up free at https://formspree.io, verify your inbox, create a
-  // form, and paste its endpoint URL below in place of the placeholder.
-  const FORM_ENDPOINT = 'https://formspree.io/f/YOUR_FORM_ID';
-
-  const sendBtn = document.getElementById('sendBtn');
-  const formStatus = document.getElementById('formStatus');
-
-  function showStatus(text, kind){
-    formStatus.textContent = text;
-    formStatus.className = 'form-status is-visible is-' + kind;
-  }
-
-  form.addEventListener('submit', function(e){
-    e.preventDefault();
-
-    const data = new FormData(form);
-    const pkgLabel = packageEl.options[packageEl.selectedIndex].text;
-    const durMap = { '1h':'1 hour', half:'Half day', full:'Full day' };
-    const assistantMap = { none: 'None', '1h': 'Studio assistant — 1 hour (+£30)', '3h': 'Studio assistant — 3 hours (+£80)' };
-    const assistantValue = document.querySelector('input[name="assistant"]:checked').value;
-
-    const lines = [
-      `Name: ${data.get('name')}`,
-      `Email: ${data.get('email')}`,
-      `Phone: ${data.get('phone') || '-'}`,
-      '',
-      `Package: ${pkgLabel}`,
-      `Duration: ${durMap[getSelectedDuration()]}`,
-      `Add-ons: ${assistantMap[assistantValue]}`,
-      '',
-      `Preferred date: ${data.get('date') || '-'}`,
-      `Preferred time: ${data.get('time') || '-'}`,
-      '',
-      `Notes: ${data.get('notes') || '-'}`,
-      '',
-      `Estimated total: £${totalEl.textContent}`
-    ];
-
-    const payload = new FormData();
-    payload.append('name', data.get('name') || '');
-    payload.append('email', data.get('email') || '');
-    payload.append('message', lines.join('\n'));
-    payload.append('_subject', `Booking quote request — ${data.get('name') || 'New enquiry'}`);
-
-    sendBtn.disabled = true;
-    sendBtn.textContent = 'Sending…';
-    formStatus.className = 'form-status';
-
-    fetch(FORM_ENDPOINT, {
-      method: 'POST',
-      body: payload,
-      headers: { 'Accept': 'application/json' }
-    })
-    .then(response => {
-      if(response.ok){
-        showStatus("Thanks — your request has been sent. We'll be in touch shortly.", 'success');
-        form.reset();
-        packageEl.selectedIndex = 0;
-        document.getElementById('dur-1h').checked = true;
-        document.getElementById('assist-none').checked = true;
-        updateAssist3Availability();
+
+        // A date counts as fully booked (and gets greyed out, like a past
+        // date) only once every hour of the day is taken in BOTH spaces.
+        function isDateFullyBooked(dateStr){
+            for(let h = OPEN_HOUR; h < CLOSE_HOUR; h++){
+                if(!isHourFullyBooked(dateStr, h)) return false;
+            }
+            return true;
+        }
+
+        function showCalMessage(text){
+            calMessageEl.textContent = text;
+            calMessageEl.classList.add('is-visible');
+            clearTimeout(showCalMessage._t);
+            showCalMessage._t = setTimeout(() => {
+                calMessageEl.classList.remove('is-visible');
+            }, 4000);
+        }
+
+        function renderWeekdays(){
+            calWeekdaysEl.innerHTML = WEEKDAYS.map(d => `<div class="cal-weekday">${d}</div>`).join('');
+        }
+
+        function renderCalendar(){
+            calMonthLabel.textContent = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
+
+            const firstOfMonth = new Date(viewYear, viewMonth, 1);
+            const startOffset = (firstOfMonth.getDay() + 6) % 7;
+            const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+            let cells = '';
+            for(let i = 0; i < startOffset; i++){
+                cells += `<div class="cal-day is-empty"></div>`;
+            }
+
+            for(let d = 1; d <= daysInMonth; d++){
+                const dateStr = toDateStr(viewYear, viewMonth, d);
+                const cellDate = new Date(viewYear, viewMonth, d);
+                cellDate.setHours(0,0,0,0);
+
+                let classes = 'cal-day';
+                let dotsHtml = '';
+
+                if(cellDate < today){
+                    classes += ' is-past';
+                } else if(isDateFullyBooked(dateStr)){
+                    classes += ' is-full';
+                } else {
+                    classes += ' is-available';
+                    const dots = [];
+                    if(isStudioBookedThatDay(dateStr)) dots.push('<span class="cal-day-dot studio"></span>');
+                    if(isDarkroomBookedThatDay(dateStr)) dots.push('<span class="cal-day-dot darkroom"></span>');
+                    if(dots.length){
+                        dotsHtml = `<span class="cal-day-dots">${dots.join('')}</span>`;
+                    }
+                }
+
+                if(dateStr === toDateStr(today.getFullYear(), today.getMonth(), today.getDate())){
+                    classes += ' is-today';
+                }
+                if(dateStr === selectedDateStr){
+                    classes += ' is-selected';
+                }
+
+                cells += `<div class="${classes}" data-date="${dateStr}">${dotsHtml}<span class="cal-day-num">${d}</span></div>`;
+            }
+
+            calGridEl.innerHTML = cells;
+            calGridEl.querySelectorAll('.cal-day.is-available').forEach(cell => {
+                cell.addEventListener('click', onDayClick);
+            });
+        }
+
+        function formatDateDisplay(dateStr){
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            return `${DAY_NAMES[dateObj.getDay()].slice(0,3)} ${d} ${MONTH_NAMES[m - 1]} ${y}`;
+        }
+
+        function onDayClick(e){
+            const cell = e.currentTarget;
+            const dateStr = cell.dataset.date;
+
+            selectedDateStr = dateStr;
+            dateInputEl.value = formatDateDisplay(dateStr);
+            renderCalendar();
+            openDayDetail(dateStr);
+        }
+
+        calPrevBtn.addEventListener('click', () => {
+            viewMonth--;
+            if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+            renderCalendar();
+        });
+        calNextBtn.addEventListener('click', () => {
+            viewMonth++;
+            if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+            renderCalendar();
+        });
+
+        // ==========================================================
+        // HOUR-BY-HOUR DAY DETAIL
+        // ==========================================================
+        const dayDetailEl = document.getElementById('dayDetail');
+        const dayDetailTitle = document.getElementById('dayDetailTitle');
+        const hourGridEl = document.getElementById('hourGrid');
+        const hourSummaryEl = document.getElementById('hourSummary');
+        const clearHoursBtn = document.getElementById('clearHours');
+
+        let selectedHours = new Set();
+        let hourDetailDateStr = null;
+
+        function formatHour(h){ return `${h}:00`; }
+
+        function groupContiguousHours(hoursArray){
+            const sorted = Array.from(hoursArray).sort((a, b) => a - b);
+            const ranges = [];
+            let start = sorted[0];
+            let prev = sorted[0];
+
+            for(let i = 1; i <= sorted.length; i++){
+                const current = sorted[i];
+                if(current !== prev + 1){
+                    ranges.push([start, prev]);
+                    start = current;
+                }
+                prev = current;
+            }
+
+            const rangeText = ranges.map(([s, e]) => `${formatHour(s)}–${formatHour(e + 1)}`).join(', ');
+            return { rangeText, hourCount: sorted.length };
+        }
+
+        function openDayDetail(dateStr){
+            hourDetailDateStr = dateStr;
+            selectedHours = new Set();
+
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            dayDetailTitle.textContent = `${DAY_NAMES[dateObj.getDay()]} ${d} ${MONTH_NAMES[m - 1]}`;
+
+            dayDetailEl.classList.add('is-visible');
+            renderHourGrid();
+            updateHourSummary();
+
+            timeInputEl.value = '';
+            timeInputEl.placeholder = 'Select a time below';
+        }
+
+        function renderHourGrid(){
+            if(!hourDetailDateStr) return;
+
+            const studioHours = getStudioHours(hourDetailDateStr);
+            const darkroomHours = getDarkroomHours(hourDetailDateStr);
+
+            let cells = '';
+            for(let h = OPEN_HOUR; h < CLOSE_HOUR; h++){
+                const studioBooked = studioHours.includes(h);
+                const darkroomBooked = darkroomHours.includes(h);
+                const isSelected = selectedHours.has(h);
+
+                let classes = 'hour-slot';
+                if(studioBooked && darkroomBooked){
+                    classes += ' is-booked';
+                } else if(studioBooked){
+                    classes += ' is-tinted-studio';
+                } else if(darkroomBooked){
+                    classes += ' is-tinted-darkroom';
+                }
+                if(isSelected) classes += ' is-selected';
+
+                cells += `<div class="${classes}" data-hour="${h}">${formatHour(h)}–${formatHour(h + 1)}</div>`;
+            }
+            hourGridEl.innerHTML = cells;
+
+            hourGridEl.querySelectorAll('.hour-slot').forEach(cell => {
+                cell.addEventListener('click', onHourClick);
+            });
+        }
+
+        function onHourClick(e){
+            const cell = e.currentTarget;
+            const hour = parseInt(cell.dataset.hour, 10);
+
+            if(cell.classList.contains('is-booked')){
+                cell.classList.remove('is-shake');
+                void cell.offsetWidth;
+                cell.classList.add('is-shake');
+                showCalMessage("That hour's already booked — pick another slot.");
+                return;
+            }
+
+            if(selectedHours.has(hour)){
+                selectedHours.delete(hour);
+            } else {
+                selectedHours.add(hour);
+            }
+            renderHourGrid();
+            updateHourSummary();
+        }
+
+        function updateHourSummary(){
+            if(selectedHours.size === 0){
+                hourSummaryEl.textContent = '';
+                timeInputEl.value = '';
+                timeInputEl.placeholder = 'Select a time below';
+                return;
+            }
+
+            const summary = groupContiguousHours(selectedHours);
+            hourSummaryEl.textContent = `Selected: ${summary.rangeText} (${summary.hourCount} hour${summary.hourCount !== 1 ? 's' : ''})`;
+            timeInputEl.value = summary.rangeText;
+
+            syncDurationFromHours();
+        }
+
+        function selectHourRange(startHour, endHourExclusive){
+            selectedHours = new Set();
+            for(let h = startHour; h < endHourExclusive; h++){
+                if(!isHourFullyBooked(hourDetailDateStr, h)){
+                    selectedHours.add(h);
+                }
+            }
+            renderHourGrid();
+            updateHourSummary();
+        }
+
+        document.querySelectorAll('.quick-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const quick = btn.dataset.quick;
+                if(quick === 'morning') selectHourRange(OPEN_HOUR, OPEN_HOUR + 4);
+                if(quick === 'afternoon') selectHourRange(OPEN_HOUR + 4, CLOSE_HOUR);
+                if(quick === 'full') selectHourRange(OPEN_HOUR, CLOSE_HOUR);
+            });
+        });
+
+        clearHoursBtn.addEventListener('click', () => {
+            selectedHours = new Set();
+            renderHourGrid();
+            updateHourSummary();
+        });
+
+        // ==========================================================
+        // SPACE / DURATION / COST ESTIMATOR
+        // ==========================================================
+        const PRICES = {
+            Darkroom:          { '1h': 15, half: 60,  full: 100 },
+            Studio:            { '1h': 40, half: 120, full: 220 },
+            'Studio + Darkroom': { '1h': null, half: 150, full: 300 }
+        };
+
+        const spaceEl = document.getElementById('space');
+        const durationGroup = document.getElementById('durationGroup');
+        const durRow1h = document.getElementById('durRow1h');
+        const totalDisplay = document.getElementById('totalDisplay');
+        const priceNote = document.getElementById('priceNote');
+        const assistantToggle = document.getElementById('assistantToggle');
+
+        let assistantRequested = false;
+
+        function getSelectedDuration(){
+            const checked = durationGroup.querySelector('input[name="duration"]:checked');
+            return checked ? checked.value : '1h';
+        }
+
+        // Studio + Darkroom has no hourly rate — disable "1 hour" and
+        // fall back to Half day when that space is chosen.
+        function updateDurationAvailability(){
+            const isBundle = spaceEl.value === 'Studio + Darkroom';
+            if(isBundle){
+                durRow1h.classList.add('is-disabled');
+                if(document.getElementById('dur-1h').checked){
+                    document.getElementById('dur-half').checked = true;
+                }
+            } else {
+                durRow1h.classList.remove('is-disabled');
+            }
+        }
+
+        function calcTotal(){
+            const space = spaceEl.value;
+            if(!space){
+                totalDisplay.textContent = 'Select a space';
+                priceNote.textContent = '';
+                return;
+            }
+
+            const dur = getSelectedDuration();
+            let base = PRICES[space][dur];
+            if(base === null){
+                base = PRICES[space]['half'];
+            }
+
+            totalDisplay.textContent = `£${base}`;
+            priceNote.textContent = assistantRequested
+                ? "Studio assistant requested — we'll confirm that cost in our reply."
+                : '';
+        }
+
+        spaceEl.addEventListener('change', () => {
+            updateDurationAvailability();
+            calcTotal();
+        });
+        durationGroup.addEventListener('change', calcTotal);
+
+        assistantToggle.addEventListener('click', () => {
+            assistantRequested = !assistantRequested;
+            assistantToggle.classList.toggle('is-active', assistantRequested);
+            assistantToggle.setAttribute('aria-pressed', String(assistantRequested));
+            calcTotal();
+        });
+
+        // Ticks the matching Duration radio when the hours picked on the
+        // calendar line up exactly with a priced block (skips "1 hour"
+        // if it's currently disabled, e.g. Studio + Darkroom selected).
+        function setDurationFromHours(value){
+            const radio = document.querySelector(`input[name="duration"][value="${value}"]`);
+            if(!radio) return;
+            const wrap = radio.closest('.radio-wrap');
+            if(wrap && wrap.classList.contains('is-disabled')) return;
+            if(!radio.checked){
+                radio.checked = true;
+                calcTotal();
+            }
+        }
+
+        function syncDurationFromHours(){
+            if(selectedHours.size === 0) return;
+            const sortedHours = Array.from(selectedHours).sort((a, b) => a - b);
+            const first = sortedHours[0];
+            const last = sortedHours[sortedHours.length - 1];
+            const isContiguous = (last - first + 1) === sortedHours.length;
+            if(!isContiguous) return;
+
+            const span = sortedHours.length;
+            if(span === 1){
+                setDurationFromHours('1h');
+            } else if(span === 4 && (first === OPEN_HOUR || first === OPEN_HOUR + 4)){
+                setDurationFromHours('half');
+            } else if(span === 8 && first === OPEN_HOUR){
+                setDurationFromHours('full');
+            }
+        }
+
+        updateDurationAvailability();
         calcTotal();
-      } else {
-        showStatus("Something went wrong sending that — please try again, or email us directly at contact@byrestudios.co.uk.", 'error');
-      }
-    })
-    .catch(() => {
-      showStatus("Something went wrong sending that — please try again, or email us directly at contact@byrestudios.co.uk.", 'error');
-    })
-    .finally(() => {
-      sendBtn.disabled = false;
-      sendBtn.textContent = 'Send request';
-    });
-  });
-</script>
 
+        // ==========================================================
+        // POPUP OPEN/CLOSE
+        // ==========================================================
+        function openCalPopup(){
+            calPopup.classList.add('is-open');
+        }
+        function closeCalPopup(){
+            calPopup.classList.remove('is-open');
+        }
+
+        dateInputEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openCalPopup();
+        });
+        calDoneBtn.addEventListener('click', closeCalPopup);
+
+        // Stop any click inside the popup from bubbling up to the
+        // document-level "click outside closes it" listener below. This
+        // matters because clicking a day or hour re-renders that part of
+        // the grid, which detaches the clicked element from the page —
+        // by the time the event reached document, .contains() would see
+        // a detached node and wrongly think the click landed outside.
+        calPopup.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        document.addEventListener('click', (e) => {
+            if(!calPopup.contains(e.target) && e.target !== dateInputEl){
+                closeCalPopup();
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'Escape') closeCalPopup();
+        });
+
+        renderWeekdays();
+        renderCalendar();
+
+        // ==========================================================
+        // FORM SUBMISSION
+        // ==========================================================
+        // Sign up at a form-backend service (e.g. https://formbackend.com or
+        // https://formspree.io), verify your inbox, create a form there, and
+        // set that form's destination/notification address to
+        // contact@byrestudios.co.uk — the recipient inbox is an account
+        // setting on whichever service you use, not something this code can
+        // set directly. Then paste the form's endpoint URL below in place
+        // of the placeholder.
+        const FORM_ENDPOINT = 'https://www.formbackend.com/f/YOUR_FORM_ID';
+
+        const form = document.getElementById('bookingForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            successMessage.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const date = dateInputEl.value;
+            const space = spaceEl.value;
+            const time = timeInputEl.value;
+
+            if (!name || !email || !date || !space || !time) {
+                errorMessage.textContent = 'Please fill in all required fields.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            if (!emailRegex.test(email)) {
+                errorMessage.textContent = 'Please enter a valid email address.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            const phone = document.getElementById('phone').value.trim();
+            const notes = document.getElementById('notes').value.trim();
+            const durMap = { '1h': '1 hour', half: 'Half day', full: 'Full day' };
+
+            const lines = [
+                `Name: ${name}`,
+                `Email: ${email}`,
+                `Phone: ${phone || '-'}`,
+                '',
+                `Space: ${space}`,
+                `Duration: ${durMap[getSelectedDuration()]}`,
+                `Studio assistant requested: ${assistantRequested ? 'Yes' : 'No'}`,
+                '',
+                `Preferred date: ${date}`,
+                `Preferred time: ${time}`,
+                '',
+                `Notes: ${notes || '-'}`,
+                '',
+                `Estimated total: ${totalDisplay.textContent}`
+            ];
+
+            const payload = new FormData();
+            payload.append('name', name);
+            payload.append('email', email);
+            payload.append('message', lines.join('\n'));
+            payload.append('_subject', `Booking request — ${name}`);
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending…';
+
+            fetch(FORM_ENDPOINT, {
+                method: 'POST',
+                body: payload,
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(response => {
+                if (response.ok) {
+                    successMessage.style.display = 'block';
+                    form.reset();
+                    selectedDateStr = null;
+                    selectedHours = new Set();
+                    hourDetailDateStr = null;
+                    dayDetailEl.classList.remove('is-visible');
+                    timeInputEl.placeholder = 'Pick a date first';
+                    assistantRequested = false;
+                    assistantToggle.classList.remove('is-active');
+                    assistantToggle.setAttribute('aria-pressed', 'false');
+                    updateDurationAvailability();
+                    calcTotal();
+                    renderCalendar();
+                } else {
+                    errorMessage.style.display = 'block';
+                }
+            })
+            .catch(() => {
+                errorMessage.style.display = 'block';
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Request Booking';
+            });
+        });
+    </script>
 </body>
 </html>
